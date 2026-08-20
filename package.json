@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@supabase/cli-windows-x64": "^2.115.0"
+  }
+}
