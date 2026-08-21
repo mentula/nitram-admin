@@ -1,0 +1,160 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Nitram brand palette — blue / navy / orange / green */
+  --navy: oklch(0.45 0.13 245);        /* brand blue ~#1B6EB4 */
+  --navy-deep: oklch(0.30 0.10 250);   /* deep navy ~#143F73 */
+  --gold: oklch(0.68 0.18 45);         /* brand orange ~#E8772E (accent) */
+  --gold-soft: oklch(0.78 0.15 55);    /* lighter orange */
+  --brand-green: oklch(0.72 0.17 130); /* brand green ~#7FB539 */
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.04 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.04 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.04 260);
+  --primary: var(--navy);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.965 0.01 255);
+  --secondary-foreground: var(--navy);
+  --muted: oklch(0.965 0.01 255);
+  --muted-foreground: oklch(0.5 0.03 258);
+  --accent: var(--gold);
+  --accent-foreground: var(--navy-deep);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.92 0.01 255);
+  --input: oklch(0.92 0.01 255);
+  --ring: var(--gold);
+
+  --gradient-hero: linear-gradient(135deg, oklch(0.16 0.06 262 / 0.92), oklch(0.24 0.07 260 / 0.75));
+  --gradient-gold: linear-gradient(135deg, var(--gold), var(--gold-soft));
+  --shadow-elegant: 0 30px 60px -30px oklch(0.16 0.06 262 / 0.35);
+  --shadow-gold: 0 20px 40px -20px oklch(0.78 0.14 82 / 0.5);
+}
+
+.dark {
+  --background: oklch(0.13 0.04 260);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.18 0.05 260);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.18 0.05 260);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: var(--gold);
+  --primary-foreground: var(--navy-deep);
+  --secondary: oklch(0.22 0.05 260);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.22 0.05 260);
+  --muted-foreground: oklch(0.72 0.02 260);
+  --accent: var(--gold);
+  --accent-foreground: var(--navy-deep);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--gold);
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  * { border-color: var(--color-border); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  img, picture, video, canvas, svg, iframe {
+    max-width: 100%;
+    display: block;
+    height: auto;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+}
+
+@utility container-x {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  max-width: 80rem;
+}
+
+@utility glass {
+  background: color-mix(in oklab, white 8%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in oklab, white 18%, transparent);
+}
+
+@utility text-gradient-gold {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes truck-drive {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes road-dash {
+  from { background-position: 0 50%; }
+  to   { background-position: -200px 50%; }
+}
+
+.hero-truck-track {
+  animation: truck-drive 28s linear infinite;
+  will-change: transform;
+}
+
+.hero-road {
+  background-image: repeating-linear-gradient(
+    to right,
+    color-mix(in oklab, var(--gold) 85%, transparent) 0 40px,
+    transparent 40px 100px
+  );
+  background-size: 200px 6px;
+  background-repeat: repeat-x;
+  background-position: 0 50%;
+  animation: road-dash 0.9s linear infinite;
+}
