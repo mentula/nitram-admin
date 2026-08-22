@@ -80,12 +80,25 @@ Service Required: ${data.service}`;
       return;
     }
 
+    const { data: lead, error: leadError } = await supabase.from("leads").insert({
+      source: "website_quote_form",
+      company_name: data.company || null,
+      contact_name: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      service_needed: data.service,
+      notes: "Public quote request",
+      status: "new",
+    } as any).select("id").single();
+
+    if (leadError || !lead) {
+      setSendError("Your request was received, but we could not register it. Please contact our team.");
+      return;
+    }
+
     const { error: quoteError } = await supabase.from("quotes").insert({
+      lead_id: lead.id,
       service_type: data.service,
-      requester_name: data.fullName,
-      requester_email: data.email,
-      requester_phone: data.phone,
-      requester_company: data.company || null,
       origin: data.countryOfOrigin || null,
       destination: data.destination || null,
       cargo_description: [data.fullName, data.email, data.phone, data.company].filter(Boolean).join(" | "),
