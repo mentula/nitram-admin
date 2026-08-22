@@ -242,6 +242,26 @@ export function TrackingProgress({ token, onReset }: TrackingProgressProps) {
         </div>
       </FadeIn>
 
+      {tracking.events?.length > 0 && (
+        <FadeIn delay={0.2}>
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-elegant)] md:p-8">
+            <h3 className="font-display text-lg font-semibold">Shipment Updates</h3>
+            <div className="mt-5 flex flex-col gap-4">
+              {[...tracking.events].reverse().map((event: any) => (
+                <div key={event.id} className="flex gap-3 border-b border-border pb-4 last:border-0 last:pb-0">
+                  <div className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
+                  <div>
+                    <p className="font-medium capitalize">{String(event.status).replaceAll('_', ' ')}</p>
+                    {event.notes && <p className="mt-1 text-sm text-muted-foreground">{event.notes}</p>}
+                    <p className="mt-1 text-xs text-muted-foreground">{format(new Date(event.created_at), 'PPP p')}{event.location ? ` · ${event.location}` : ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </FadeIn>
+      )}
+
       {/* Admin Notes */}
       {tracking.notes && (
         <FadeIn delay={0.2}>

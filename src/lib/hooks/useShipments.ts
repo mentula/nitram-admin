@@ -201,13 +201,14 @@ export function useUpdateShipmentStatus() {
       if (error) throw error;
 
       // Add timeline entry
-      await supabase.from('shipment_timeline').insert({
+      const { error: timelineError } = await supabase.from('shipment_timeline').insert({
         shipment_id: id,
         status,
         location,
         notes,
         created_by: user?.id,
       });
+      if (timelineError) throw new Error('Shipment status was not recorded');
 
       await logActivity({
         action: ActivityTypes.SHIPMENT_STATUS_CHANGED,

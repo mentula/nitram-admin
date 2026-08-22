@@ -4,6 +4,7 @@ import { CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
 import { COMPANY, SERVICE_OPTIONS } from "@/lib/site-data";
 import { sendAssessment, validateFiles, MAX_FILE_BYTES, MAX_TOTAL_BYTES } from "@/lib/send-assessment";
 import { buildWhatsAppLink } from "@/config/contact";
+import { supabase } from "@/lib/supabase";
 
 const schema = z.object({
   fullName: z.string().trim().min(2, "Required").max(100),
@@ -76,6 +77,23 @@ Service Required: ${data.service}`;
     setSubmitting(false);
     if (!res.ok) {
       setSendError(res.error || "Could not send your request. Please try again.");
+      return;
+    }
+
+    const { error: quoteError } = await supabase.from("quotes").insert({
+      service_type: data.service,
+      requester_name: data.fullName,
+      requester_email: data.email,
+      requester_phone: data.phone,
+      requester_company: data.company || null,
+      origin: data.countryOfOrigin || null,
+      destination: data.destination || null,
+      cargo_description: [data.fullName, data.email, data.phone, data.company].filter(Boolean).join(" | "),
+      notes: "Public quote request",
+      status: "submitted",
+    } as any);
+    if (quoteError) {
+      setSendError("Your request was received, but we could not save the quote. Please contact our team.");
       return;
     }
     setSent(true);

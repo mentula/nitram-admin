@@ -160,151 +160,28 @@ export function useApproveQuote() {
 
   return useMutation({
     mutationFn: async (quoteId: string) => {
-      // 1. Update quote status to approved and mark as approved
-      const { data, error } = await supabase
-        .from('quotes')
-        .update({ status: 'approved', approved: true } as any)
-        .eq('id', quoteId)
-        .select()
-        .single();
+      const { data, error } = await (supabase as any).rpc('approve_quote_workflow', {
+        p_quote_id: quoteId,
+      });
 
-      if (error) throw error;
+      if (error) throw new Error('Unable to approve quote');
+      if (!data) throw new Error('Quote approval returned no result');
 
       await logActivity({
         action: ActivityTypes.QUOTE_APPROVED,
         entity_type: 'quote',
-        entity_id: data.id,
-        details: { 
-          quote_number: data.quote_number,
-          status: data.status,
-        },
+        entity_id: quoteId,
+        details: { customer_id: data.customer, shipment_id: data.shipment },
       });
 
-      // 2. Prepare customer ID - use existing customer or create from lead
-      let customerId = data.customer_id;
-      
-      if (!customerId && data.lead_id) {
-        const { data: lead, error: leadError } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('id', data.lead_id)
-          .single();
-        
-        if (leadError || !lead) {
-          throw new Error('Linked lead not found for quote conversion');
-        }
-        
-        if (lead.converted_to_customer) {
-          customerId = lead.converted_to_customer;
-        } else {
-          const { data: customer, error: customerError } = await supabase
-            .from('customers')
-            .insert({
-              company_name: lead.company_name || `${lead.contact_name} Company`,
-              contact_person: lead.contact_name,
-              email: lead.email,
-              phone: lead.phone,
-              country: 'Zambia',
-              status: 'prospect',
-            } as any)
-            .select()
-            .single();
-          
-          if (customerError || !customer) {
-            throw new Error('Failed to create customer from lead');
-          }
-          
-          customerId = customer.id;
-          
-          await supabase
-            .from('leads')
-            .update({ status: 'won', converted_to_customer: customer.id } as any)
-            .eq('id', lead.id);
-        }
-      }
-      
-      // 3. Create shipment from quote data
-      const { data: shipment, error: shipmentError } = await supabase
-        .from('shipments')
-        .insert({
-          customer_id: customerId,
-          quote_id: data.id,
-          origin: data.origin || 'Unknown',
-          destination: data.destination || 'Unknown',
-          cargo_description: data.cargo_description,
-          status: 'awaiting_collection',
-        } as any)
-        .select()
-        .single();
-
-      if (shipmentError) throw shipmentError;
-
-      // 4. Generate unique tracking token for the shipment
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let token = '';
-      for (let i = 0; i < 8; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      
-      // Ensure unique token
-      let tokenExists = true;
-      let attempts = 0;
-      let uniqueToken = token;
-      
-      while (tokenExists && attempts < 10) {
-        const { data: existingToken } = await supabase
-          .from('tracking_tokens')
-          .select('token')
-          .eq('token', uniqueToken)
-          .single();
-        
-        if (!existingToken) {
-          tokenExists = false;
-        } else {
-          uniqueToken = '';
-          for (let i = 0; i < 8; i++) {
-            uniqueToken += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-          attempts++;
-        }
-      }
-      
-// 5. Insert tracking token
-       const { data: tokenData, error: tokenInsertError } = await supabase
-         .from('tracking_tokens')
-         .insert({
-           token: uniqueToken,
-           shipment_id: shipment.id,
-           customer_id: customerId,
-           current_step: 1,
-           status: 'active',
-         } as any)
-         .select()
-         .single();
-
-       if (tokenInsertError) {
-         console.error('Error inserting tracking token:', tokenInsertError.response?.data || tokenInsertError.message);
-         throw new Error(`Failed to create tracking token: ${tokenInsertError.message}`);
-       }
-
-      await logActivity({
-        action: ActivityTypes.SHIPMENT_CREATED,
-        entity_type: 'shipment',
-        entity_id: shipment.id,
-        details: { 
-          shipment_number: shipment.shipment_number,
-          quote_number: data.quote_number,
-          tracking_token: uniqueToken,
-        },
-      });
-
-      return data;
+      return { id: quoteId, ...data };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['quote', data.id] });
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
       queryClient.invalidateQueries({ queryKey: ['tracking-tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
   });
 }
@@ -313,6 +190,30 @@ export function useApproveQuote() {
  * Hook to convert an approved quote to a shipment
  */
 export function useConvertQuoteToShipment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (quoteId: string) => {
+      const { data, error } = await (supabase as any).rpc('approve_quote_workflow', {
+        p_quote_id: quoteId,
+      });
+      if (error) throw new Error('Unable to create shipment from quote');
+      if (!data?.shipment) throw new Error('Shipment was not created');
+      return { quote: { id: quoteId }, shipment: { id: data.shipment }, tracking_token: data.tracking_token };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['quote'] });
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['tracking-tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['customer'] });
+      queryClient.invalidateQueries({ queryKey: ['lead'] });
+    },
+  });
+}
+
+/* Legacy implementation retained below only until removed from generated route references. */
+export function useLegacyConvertQuoteToShipment() {
   const queryClient = useQueryClient();
 
   return useMutation({
