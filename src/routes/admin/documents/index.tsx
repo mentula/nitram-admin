@@ -71,6 +71,7 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 export const Route = createFileRoute('/admin/documents/')({
   component: DocumentsAdminPage,
@@ -87,7 +88,7 @@ function DocumentsAdminPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadForm, setUploadForm] = useState({
     category: '',
@@ -129,7 +130,7 @@ function DocumentsAdminPage() {
           file_path: uploadResult.filePath,
           file_size: uploadResult.fileSize,
           file_type: uploadResult.fileType,
-          bucket_name: 'company-documents',
+          bucket_name: 'documents',
           category: uploadForm.category || null,
           description: uploadForm.description || null,
           expires_at: uploadForm.expires_at || null,
@@ -162,8 +163,15 @@ function DocumentsAdminPage() {
     }
   };
 
-  const handleDownload = (doc: any) => {
-    window.open(doc.file_path, '_blank');
+  const handleDownload = async (doc: any) => {
+    const { data, error } = await supabase.storage
+      .from(doc.bucket_name || 'documents')
+      .createSignedUrl(doc.file_path, 300);
+    if (error || !data?.signedUrl) {
+      toast.error('Unable to open document');
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const filteredDocs = documents?.filter(doc => {
@@ -171,7 +179,7 @@ function DocumentsAdminPage() {
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = !categoryFilter || doc.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || doc.category === categoryFilter;
 
     return matchesSearch && matchesCategory;
   });
@@ -253,7 +261,7 @@ function DocumentsAdminPage() {
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All categories</SelectItem>
+                <SelectItem value="all">All categories</SelectItem>
                 {DOCUMENT_CATEGORIES.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}
@@ -363,15 +371,9 @@ function DocumentsAdminPage() {
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <a
-                                href={doc.file_path}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Open in New Tab
-                              </a>
+                            <DropdownMenuItem onClick={() => handleDownload(doc)}>
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Open in New Tab
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

@@ -12,6 +12,7 @@ export function useDocuments(filters?: {
   customer_id?: string;
   shipment_id?: string;
   quote_id?: string;
+  search?: string;
 }) {
   return useQuery({
     queryKey: ['documents', filters],
@@ -38,6 +39,10 @@ export function useDocuments(filters?: {
       }
       if (filters?.quote_id) {
         query = query.eq('quote_id', filters.quote_id);
+      }
+      if (filters?.search) {
+        const term = filters.search.replace(/[,%]/g, ' ').trim();
+        if (term) query = query.ilike('name', `%${term}%`);
       }
 
       const { data, error } = await query;
@@ -141,7 +146,7 @@ export function useDeleteDocument() {
     mutationFn: async ({ id, filePath }: { id: string; filePath: string }) => {
       // Delete file from storage
       const { error: storageError } = await supabase.storage
-        .from('company-documents')
+        .from('documents')
         .remove([filePath]);
 
       if (storageError) {
@@ -176,18 +181,19 @@ export function useUploadDocument() {
       const filePath = `${category || 'general'}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('company-documents')
+        .from('documents')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('company-documents')
+        .from('documents')
         .getPublicUrl(filePath);
 
       return {
         filePath,
-        publicUrl,
+        publicUrl: null,
+        bucketName: 'documents',
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,

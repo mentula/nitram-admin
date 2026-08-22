@@ -80,9 +80,8 @@ function BlogPage() {
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value=" ">All categories</SelectItem>
                 {categories?.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.slug}>
+                  <SelectItem key={cat.id} value={cat.id}>
                     {cat.name}
                   </SelectItem>
                 ))}
@@ -93,7 +92,6 @@ function BlogPage() {
                 <SelectValue placeholder="All tags" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value=" ">All tags</SelectItem>
                 {tags?.map((tag) => (
                   <SelectItem key={tag.id} value={tag.slug}>
                     {tag.name}
@@ -138,7 +136,7 @@ function BlogPage() {
                       </div>
                       <h3 className="mt-4 font-display text-lg font-bold leading-snug">
                         <Link
-                          to={`/blog/${post.slug}`}
+                          to="/blog/$slug" params={{ slug: post.slug }}
                           className="hover:text-[var(--gold)]"
                         >
                           {post.title}
@@ -162,7 +160,7 @@ function BlogPage() {
                         </span>
                       </div>
                       <Link
-                        to={`/blog/${post.slug}`}
+                        to="/blog/$slug" params={{ slug: post.slug }}
                         className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--navy)] hover:text-[var(--gold)]"
                       >
                         Read article <ArrowRight className="h-3.5 w-3.5" />

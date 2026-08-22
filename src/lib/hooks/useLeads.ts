@@ -172,66 +172,20 @@ export function useConvertLeadToCustomer() {
 
   return useMutation({
     mutationFn: async (leadId: string) => {
-      console.log('🔄 Converting lead to customer:', leadId);
-      
-      const { data: lead, error: leadError } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('id', leadId)
-        .single();
-
-      if (leadError || !lead) {
-        console.error('❌ Lead not found:', leadError);
-        throw new Error('Lead not found');
-      }
-
-      console.log('📋 Lead data:', lead);
-
-      const { data, error: customerError } = await supabase
-        .from('customers')
-        .insert({
-          company_name: lead.company_name || `${lead.contact_name} Company`,
-          contact_person: lead.contact_name,
-          email: lead.email,
-          phone: lead.phone,
-          country: lead.country || 'Zambia',
-          status: 'active',
-        } as any)
-        .select('*')
-        .single();
-
-      if (customerError) {
-        console.error('❌ Failed to create customer:', customerError);
-        throw customerError;
-      }
-      
-      console.log('✅ Customer created:', data?.company_name, data?.id);
-
-      // Update lead with conversion reference
-      const { error: updateError } = await supabase
-        .from('leads')
-        .update({
-          status: 'won',
-          converted_to_customer: data.id,
-        } as any)
-        .eq('id', leadId);
-
-      if (updateError) {
-        console.error('❌ Failed to update lead:', updateError);
-        throw updateError;
-      }
-
-      console.log('✅ Lead updated with conversion reference');
+      const { data, error } = await (supabase as any).rpc('convert_lead_to_customer_workflow', {
+        p_lead_id: leadId,
+      });
+      if (error) throw new Error('Unable to accept lead');
+      if (!data?.customer) throw new Error('Customer was not created');
 
       await logActivity({
         action: ActivityTypes.CUSTOMER_CREATED,
         entity_type: 'customer',
-        entity_id: data.id,
-        details: { company_name: data.company_name, converted_from_lead: leadId },
+        entity_id: data.customer,
+        details: { converted_from_lead: leadId, existing: data.existing },
       });
 
-      console.log('✅ Activity logged for conversion');
-      return { customer: data, lead };
+      return { customer: { id: data.customer }, lead: { id: data.lead } };
     },
     onSuccess: () => {
       console.log('📦 Invalidating queries after conversion');
@@ -256,7 +210,7 @@ export function useUpdateLeadStatus() {
         .update({ status } as any)
         .eq('id', id)
         .select('*')
-        .select('*')
+        .single();
 
       if (error) throw error;
 

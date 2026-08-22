@@ -1,5 +1,4 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FadeIn } from "@/components/site/Section";
 import { useBlogPostBySlug, useBlogPosts, useBlogTags } from "@/lib/hooks/useBlog";
@@ -24,15 +23,7 @@ export const Route = createFileRoute("/blog/$slug")({
     };
   },
   component: BlogPostPage,
-  loader: async ({ params, context }) => {
-    const post = await context.queryClient.ensureQueryData(
-      useBlogPostBySlug.getQueryKey(params.slug)
-    );
-    if (!post) {
-      throw redirect({ to: "/blog" });
-    }
-    return { post };
-  },
+  loader: async () => ({}),
 });
 
 function BlogPostPage() {
@@ -184,7 +175,7 @@ function BlogPostPage() {
                         <Badge className="bg-[var(--navy)] text-white">{r.category.name}</Badge>
                       )}
                       <h3 className="mt-3 font-display text-lg font-bold leading-snug">
-                        <Link to={`/blog/${r.slug}`} className="hover:text-[var(--gold)]">
+                        <Link to="/blog/$slug" params={{ slug: r.slug }} className="hover:text-[var(--gold)]">
                           {r.title}
                         </Link>
                       </h3>
@@ -194,7 +185,7 @@ function BlogPostPage() {
                         </p>
                       )}
                       <Link
-                        to={`/blog/${r.slug}`}
+                        to="/blog/$slug" params={{ slug: r.slug }}
                         className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--navy)] hover:text-[var(--gold)]"
                       >
                         Read article <ArrowRight className="h-3.5 w-3.5" />

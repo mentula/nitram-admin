@@ -54,25 +54,20 @@ export function useTrackingByToken(token: string | null) {
     queryFn: async () => {
       if (!token) throw new Error('Token is required');
 
-      const { data, error } = await supabase
-        .from('tracking_tokens')
-        .select(`
-          *,
-          shipment:shipments(
-            shipment_number,
-            origin,
-            destination,
-            cargo_description,
-            status,
-            eta,
-            created_at
-          )
-        `)
-        .eq('token', token.toUpperCase())
-        .single();
+      const { data, error } = await (supabase as any).rpc('track_shipment_by_token', {
+        p_token: token,
+      });
 
-      if (error) throw error;
-      return data;
+      if (error || !data?.shipment) throw new Error('Shipment not found');
+      return {
+        token,
+        current_step: Math.max(1, Math.min(8, data.events?.length || 1)),
+        status: data.shipment.status === 'delivered' ? 'completed' : data.shipment.status === 'cancelled' ? 'cancelled' : 'active',
+        notes: data.events?.at(-1)?.notes ?? null,
+        updated_at: data.shipment.updated_at,
+        shipment: data.shipment,
+        events: data.events ?? [],
+      };
     },
     enabled: !!token && token.length === 8,
   });
