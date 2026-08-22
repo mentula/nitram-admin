@@ -54,13 +54,13 @@ interface BlogPostListProps {
 }
 
 export function BlogPostList({ onEdit, onView }: BlogPostListProps) {
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   const { data: posts, isLoading } = useBlogPosts({
-    status: statusFilter || undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
     search: searchQuery || undefined,
   });
 
@@ -125,7 +125,7 @@ export function BlogPostList({ onEdit, onView }: BlogPostListProps) {
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All statuses</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="published">Published</SelectItem>
             <SelectItem value="scheduled">Scheduled</SelectItem>

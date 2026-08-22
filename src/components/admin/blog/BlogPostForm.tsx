@@ -123,13 +123,13 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
       const filePath = `blog-featured/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('public')
+        .from('blog-images')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('public')
+        .from('blog-images')
         .getPublicUrl(filePath);
 
       setValue('featured_image', publicUrl);
@@ -258,14 +258,14 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
         <div className="space-y-2">
           <Label htmlFor="category">Category</Label>
           <Select
-            value={watch('category_id') || ''}
-            onValueChange={(value) => setValue('category_id', value)}
+            value={watch('category_id') || 'none'}
+            onValueChange={(value) => setValue('category_id', value === 'none' ? undefined : value)}
           >
             <SelectTrigger id="category">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {categories?.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}
@@ -279,14 +279,14 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
         <div className="space-y-2">
           <Label htmlFor="author">Author</Label>
           <Select
-            value={watch('author_id') || ''}
-            onValueChange={(value) => setValue('author_id', value)}
+            value={watch('author_id') || 'none'}
+            onValueChange={(value) => setValue('author_id', value === 'none' ? undefined : value)}
           >
             <SelectTrigger id="author">
               <SelectValue placeholder="Select author" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {authors?.map((author) => (
                 <SelectItem key={author.id} value={author.id}>
                   {author.name}

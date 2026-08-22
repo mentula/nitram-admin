@@ -8,6 +8,7 @@
   <url><loc>/quote</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
   <url><loc>/contact</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>/resources</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>
