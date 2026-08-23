@@ -67,7 +67,7 @@ function QuoteDetailPage() {
         await approveQuote.mutateAsync(id);
         toast.success('Quote approved successfully');
       } catch (error) {
-        toast.error('Failed to approve quote');
+        toast.error(error instanceof Error ? error.message : 'Failed to approve quote');
       }
     }
   };
@@ -79,7 +79,7 @@ function QuoteDetailPage() {
         toast.success('Quote converted to shipment successfully');
         navigate({ to: `/admin/shipments/${result.shipment.id}` });
       } catch (error) {
-        toast.error('Failed to convert quote');
+        toast.error(error instanceof Error ? error.message : 'Failed to convert quote');
       }
     }
   };

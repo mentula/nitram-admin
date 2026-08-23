@@ -160,21 +160,21 @@ export function useApproveQuote() {
 
   return useMutation({
     mutationFn: async (quoteId: string) => {
-      const { data, error } = await (supabase as any).rpc('approve_quote_workflow', {
-        p_quote_id: quoteId,
-      });
-
-      if (error) throw new Error('Unable to approve quote');
-      if (!data) throw new Error('Quote approval returned no result');
-
-      await logActivity({
-        action: ActivityTypes.QUOTE_APPROVED,
-        entity_type: 'quote',
-        entity_id: quoteId,
-        details: { customer_id: data.customer, shipment_id: data.shipment },
-      });
-
-      return { id: quoteId, ...data };
+      const { data: quote, error: quoteError } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
+      if (quoteError || !quote) throw new Error(quoteError?.message || 'Quote not found');
+      const { data: shipment, error: shipmentError } = await supabase.from('shipments').insert({
+        quote_id: quote.id,
+        customer_id: quote.customer_id,
+        origin: quote.origin || 'Unknown',
+        destination: quote.destination || 'Unknown',
+        cargo_description: quote.cargo_description || quote.service_type || 'Quote shipment',
+        status: 'awaiting_collection',
+      } as any).select().single();
+      if (shipmentError || !shipment) throw new Error(shipmentError?.message || 'Unable to create shipment');
+      const { error: updateError } = await supabase.from('quotes').update({ status: 'approved' } as any).eq('id', quoteId);
+      if (updateError) throw new Error(updateError.message);
+      await logActivity({ action: ActivityTypes.QUOTE_APPROVED, entity_type: 'quote', entity_id: quoteId, details: { shipment_id: shipment.id } });
+      return { id: quoteId, customer: quote.customer_id, shipment: shipment.id };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
@@ -194,12 +194,20 @@ export function useConvertQuoteToShipment() {
 
   return useMutation({
     mutationFn: async (quoteId: string) => {
-      const { data, error } = await (supabase as any).rpc('approve_quote_workflow', {
-        p_quote_id: quoteId,
-      });
-      if (error) throw new Error('Unable to create shipment from quote');
-      if (!data?.shipment) throw new Error('Shipment was not created');
-      return { quote: { id: quoteId }, shipment: { id: data.shipment }, tracking_token: data.tracking_token };
+      const { data: quote, error: quoteError } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
+      if (quoteError || !quote) throw new Error(quoteError?.message || 'Quote not found');
+      const { data: shipment, error: shipmentError } = await supabase.from('shipments').insert({
+        quote_id: quote.id,
+        customer_id: quote.customer_id,
+        origin: quote.origin || 'Unknown',
+        destination: quote.destination || 'Unknown',
+        cargo_description: quote.cargo_description || quote.service_type || 'Quote shipment',
+        status: 'awaiting_collection',
+      } as any).select().single();
+      if (shipmentError || !shipment) throw new Error(shipmentError?.message || 'Unable to create shipment');
+      const { error: updateError } = await supabase.from('quotes').update({ status: 'converted' } as any).eq('id', quoteId);
+      if (updateError) throw new Error(updateError.message);
+      return { quote: { id: quoteId }, shipment: { id: shipment.id } };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });

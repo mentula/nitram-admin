@@ -44,7 +44,7 @@ const statusColors: Record<string, string> = {
 };
 
 function QuotesPage() {
-  const { data: quotes, isLoading } = useQuotes();
+  const { data: quotes, isLoading, isError, error } = useQuotes();
   const createQuote = useCreateQuote();
   const approveQuote = useApproveQuote();
   const deleteQuote = useDeleteQuote();
@@ -79,7 +79,7 @@ function QuotesPage() {
         await approveQuote.mutateAsync(id);
         toast.success('Quote approved successfully');
       } catch (error) {
-        toast.error('Failed to approve quote');
+        toast.error(error instanceof Error ? error.message : 'Failed to approve quote');
       }
     }
   };
@@ -140,6 +140,12 @@ function QuotesPage() {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       Loading quotes...
+                    </TableCell>
+                  </TableRow>
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-destructive">
+                      {error instanceof Error ? error.message : 'Unable to load quotes. Please refresh and try again.'}
                     </TableCell>
                   </TableRow>
                 ) : filteredQuotes && filteredQuotes.length > 0 ? (

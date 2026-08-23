@@ -65,21 +65,6 @@ Service Required: ${data.service}`;
 
     setWaLink(buildWhatsAppLink(messageBody));
 
-    const res = await sendAssessment({
-      stage: "started",
-      fullName: data.fullName,
-      email: data.email,
-      phone: data.phone,
-      service: data.service,
-      ...(files.length > 0 ? { files: { additional: files } } : {}),
-    });
-
-    setSubmitting(false);
-    if (!res.ok) {
-      setSendError(res.error || "Could not send your request. Please try again.");
-      return;
-    }
-
     const { error: quoteError } = await supabase.from("quotes").insert({
       requester_name: data.fullName,
       requester_email: data.email,
@@ -93,7 +78,23 @@ Service Required: ${data.service}`;
       status: "submitted",
     } as any);
     if (quoteError) {
-      setSendError("Your request was received, but we could not save the quote. Please contact our team.");
+      setSubmitting(false);
+      setSendError(`We could not register the quote: ${quoteError.message}`);
+      return;
+    }
+
+    const res = await sendAssessment({
+      stage: "started",
+      fullName: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      service: data.service,
+      ...(files.length > 0 ? { files: { additional: files } } : {}),
+    });
+
+    setSubmitting(false);
+    if (!res.ok) {
+      setSendError("Your quote was registered, but notification delivery failed. Our team can still see it in Admin.");
       return;
     }
     setSent(true);
