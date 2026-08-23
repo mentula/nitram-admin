@@ -18,8 +18,7 @@ export function useShipments() {
         .from('shipments')
         .select(`
           *,
-          customer:customers(id, company_name, contact_person, email),
-          assigned_to_profile:profiles!shipments_assigned_to_fkey(full_name, email)
+          customer:customers(id, company_name, contact_person, email)
         `)
         .order('created_at', { ascending: false });
 
@@ -38,9 +37,7 @@ export function useShipment(id: string) {
         .select(`
           *,
           customer:customers(id, company_name, contact_person, email, phone),
-          quote:quotes(id, quote_number, service_type),
-          assigned_to_profile:profiles!shipments_assigned_to_fkey(full_name, email),
-          created_by_profile:profiles!shipments_created_by_fkey(full_name, email)
+          quote:quotes(id, quote_number, service_type)
         `)
         .eq('id', id)
         .single();
@@ -58,10 +55,7 @@ export function useShipmentTimeline(shipmentId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shipment_timeline')
-        .select(`
-          *,
-          created_by_profile:profiles!shipment_timeline_created_by_fkey(full_name, email)
-        `)
+        .select('*')
         .eq('shipment_id', shipmentId)
         .order('created_at', { ascending: false });
 
@@ -91,13 +85,17 @@ export function useCreateShipment() {
       if (error) throw error;
 
       // Create initial timeline entry
-      await supabase.from('shipment_timeline').insert({
+      const { error: timelineError } = await supabase.from('shipment_timeline').insert({
         shipment_id: data.id,
         status: data.status,
         location: data.origin,
         notes: 'Shipment created',
         created_by: user?.id,
       });
+      if (timelineError) {
+        await supabase.from('shipments').delete().eq('id', data.id);
+        throw timelineError;
+      }
 
       // Auto-generate tracking token
       let token = generateTrackingToken();
@@ -117,12 +115,17 @@ export function useCreateShipment() {
       }
 
       // Create tracking token
-      await supabase.from('tracking_tokens').insert({
+      const { error: trackingError } = await supabase.from('tracking_tokens').insert({
         token,
         shipment_id: data.id,
         current_step: 1,
         status: 'active',
       });
+      if (trackingError) {
+        await supabase.from('shipment_timeline').delete().eq('shipment_id', data.id);
+        await supabase.from('shipments').delete().eq('id', data.id);
+        throw trackingError;
+      }
 
       await logActivity({
         action: ActivityTypes.SHIPMENT_CREATED,

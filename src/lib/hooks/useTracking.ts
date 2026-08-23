@@ -82,15 +82,7 @@ export function useTrackingTokens() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tracking_tokens')
-        .select(`
-          *,
-          shipment:shipments(
-            shipment_number,
-            origin,
-            destination,
-            status
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -45,7 +45,7 @@ const statusColors: Record<string, string> = {
 };
 
 function ShipmentsPage() {
-  const { data: shipments, isLoading } = useShipments();
+  const { data: shipments, isLoading, isError } = useShipments();
   const createShipment = useCreateShipment();
   const deleteShipment = useDeleteShipment();
   
@@ -124,9 +124,11 @@ function ShipmentsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      Loading shipments...
-                    </TableCell>
+                    <TableCell colSpan={7} className="text-center py-8">Loading shipments...</TableCell>
+                  </TableRow>
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-destructive">Unable to load shipments. Please refresh and try again.</TableCell>
                   </TableRow>
                 ) : filteredShipments && filteredShipments.length > 0 ? (
                   filteredShipments.map((shipment) => (

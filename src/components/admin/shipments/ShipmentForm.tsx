@@ -19,7 +19,7 @@ type Shipment = Database['public']['Tables']['shipments']['Row'];
 type ShipmentStatus = Database['public']['Enums']['shipment_status'];
 
 const shipmentSchema = z.object({
-  customer_id: z.string().uuid().nullable().optional(),
+  customer_id: z.string().uuid('Select a customer'),
   origin: z.string().min(1, 'Origin is required'),
   destination: z.string().min(1, 'Destination is required'),
   current_location: z.string().nullable().optional(),
@@ -52,7 +52,7 @@ export function ShipmentForm({ shipment, onSubmit, onCancel, isLoading }: Shipme
     resolver: zodResolver(shipmentSchema) as any,
     defaultValues: shipment || {
       status: 'awaiting_collection',
-      customer_id: undefined,
+      customer_id: '',
       origin: '',
       destination: '',
       current_location: undefined,
@@ -63,7 +63,7 @@ export function ShipmentForm({ shipment, onSubmit, onCancel, isLoading }: Shipme
     },
   });
 
-  const customerId = watch('customer_id') ?? undefined;
+  const customerId = watch('customer_id') || undefined;
   const status = watch('status') ?? 'awaiting_collection';
 
   return (
@@ -161,7 +161,9 @@ export function ShipmentForm({ shipment, onSubmit, onCancel, isLoading }: Shipme
             id="cargo_weight"
             type="number"
             step="0.01"
-            {...register('cargo_weight', { valueAsNumber: true })}
+            {...register('cargo_weight', {
+      setValueAs: (value) => value === '' ? null : Number(value),
+    })}
             disabled={isLoading}
           />
         </div>
