@@ -16,7 +16,7 @@ export function useQuotes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, customer:customers(company_name), lead:leads(contact_name), created_by:profiles!quotes_created_by_fkey(full_name)')
+        .select('*, customer:customers(company_name), lead:leads(contact_name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

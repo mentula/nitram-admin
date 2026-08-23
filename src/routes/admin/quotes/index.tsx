@@ -86,7 +86,11 @@ function QuotesPage() {
   const filteredQuotes = quotes?.filter((quote) =>
     quote.quote_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
     quote.service_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (quote.customer?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    (quote.customer?.company_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (quote.requester_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (quote.requester_email?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (quote.requester_company?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (quote.lead?.contact_name?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -145,7 +149,7 @@ function QuotesPage() {
                         {quote.quote_number}
                       </TableCell>
                       <TableCell>
-                        {quote.customer?.company_name || '-'}
+                        {quote.customer?.company_name || quote.requester_company || quote.requester_name || quote.lead?.contact_name || '-'}
                       </TableCell>
                       <TableCell>{quote.service_type}</TableCell>
                       <TableCell>

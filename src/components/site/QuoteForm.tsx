@@ -81,11 +81,11 @@ Service Required: ${data.service}`;
     }
 
     const { error: quoteError } = await supabase.from("quotes").insert({
-      service_type: data.service,
       requester_name: data.fullName,
       requester_email: data.email,
       requester_phone: data.phone,
       requester_company: data.company || null,
+      service_type: data.service,
       origin: data.countryOfOrigin || null,
       destination: data.destination || null,
       cargo_description: [data.fullName, data.email, data.phone, data.company].filter(Boolean).join(" | "),
