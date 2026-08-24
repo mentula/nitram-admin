@@ -140,7 +140,7 @@ export function useCreateQuoteFromAssessment() {
           cargo_description: data.cargoDescription
             ? `${data.cargoType}\n\nBorder of Entry: ${data.borderOfEntry}\nBorder Clearance Type: ${data.borderClearanceType}\n\nDescription:\n${data.cargoDescription}`
             : `${data.cargoType}\n\nBorder of Entry: ${data.borderOfEntry}\nBorder Clearance Type: ${data.borderClearanceType}`,
-          status: 'draft',
+          status: 'submitted',
           notes: `Quote request from website assessment at ${new Date().toLocaleString()}`,
         } as any)
         .select()
