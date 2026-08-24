@@ -33,19 +33,21 @@ export const Route = createFileRoute('/admin/blog/')({
 
 function BlogAdminPage() {
   const navigate = useNavigate();
-  const { data: posts } = useBlogPosts();
-  const { data: loadedPost, isLoading: isLoadingPost, error: postError } = useBlogPost(editingPostId);
-  const createPost = useCreateBlogPost();
-  const updatePost = useUpdateBlogPost();
-
-  useEffect(() => {
-    if (editingPostId && loadedPost) setEditingPost(loadedPost);
-  }, [editingPostId, loadedPost]);
-
   const [activeTab, setActiveTab] = useState('posts');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingPost, setEditingPost] = useState<any>(null);
+  const { data: posts } = useBlogPosts();
+  const { data: loadedPost } = useBlogPost(editingPostId);
+  const createPost = useCreateBlogPost();
+  const updatePost = useUpdateBlogPost();
+
+  useEffect(() => {
+    if (editingPostId && loadedPost) {
+      setEditingPost(loadedPost);
+      setDialogOpen(true);
+    }
+  }, [editingPostId, loadedPost]);
 
   // Calculate KPIs
   const totalPosts = posts?.length || 0;
