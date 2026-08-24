@@ -151,17 +151,20 @@ function AssessmentPage() {
     // 4) HubSpot
     setStatusMsg("Saving to our CRM…");
     try {
-      const crm = await upsertHubspotLead({
-        data: {
-          fullName: lead.fullName,
-          company: lead.company,
-          email: lead.email,
-          phone: lead.phone,
-          service: lead.service,
-          stage: "started",
-          notes: `Website assessment started at ${now}. Service: ${lead.service}.`,
-        },
-      });
+      const crm = await Promise.race([
+        upsertHubspotLead({
+          data: {
+            fullName: lead.fullName,
+            company: lead.company,
+            email: lead.email,
+            phone: lead.phone,
+            service: lead.service,
+            stage: "started",
+            notes: `Website assessment started at ${now}. Service: ${lead.service}.`,
+          },
+        }),
+        new Promise<{ ok: false; skipped: true }>((resolve) => setTimeout(() => resolve({ ok: false, skipped: true }), 10000)),
+      ]);
       if (crm.ok && "contactId" in crm && crm.contactId) setContactId(crm.contactId);
       setChecks((c) => ({ ...c, crm: !!crm.ok || !!(crm as { skipped?: boolean }).skipped }));
     } catch {
