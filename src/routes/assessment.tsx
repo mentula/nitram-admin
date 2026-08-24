@@ -138,14 +138,10 @@ function AssessmentPage() {
 
     // 2) Email via Resend server route (no attachments at lead stage)
     setStatusMsg("Sending your details to our team…");
-    const emailRes = await sendAssessment({
-      stage: "started",
-      fullName: lead.fullName,
-      company: lead.company,
-      email: lead.email,
-      phone: lead.phone,
-      service: lead.service,
-    });
+    const emailRes = await Promise.race([
+      sendAssessment({ stage: "started", fullName: lead.fullName, company: lead.company, email: lead.email, phone: lead.phone, service: lead.service }),
+      new Promise<{ ok: false; error: string }>((resolve) => setTimeout(() => resolve({ ok: false, error: "Email delivery timed out" }), 10000)),
+    ]);
     setChecks((c) => ({ ...c, email: emailRes.ok }));
 
     // 3) WhatsApp — link only (browsers block auto-opening api.whatsapp.com)
@@ -225,12 +221,14 @@ function AssessmentPage() {
       .join("\n") || "None uploaded";
 
     // 1) Save quote to database even when the lead step was interrupted.
+    let savedQuoteId: string;
     try {
       const quote = leadId
         ? await createQuoteMutation.mutateAsync({ leadId, service: lead.service, origin: assessment.countryOfOrigin, destination: assessment.destination, borderOfEntry: assessment.borderOfEntry, cargoType: assessment.cargoType, cargoDescription: assessment.description, borderClearanceType: assessment.borderClearanceType })
         : (await supabase.from("quotes").insert({ requester_name: lead.fullName, requester_email: lead.email, requester_phone: lead.phone, requester_company: lead.company || null, service_type: lead.service, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: `${assessment.cargoType}\n\nBorder of Entry: ${assessment.borderOfEntry}\nBorder Clearance Type: ${assessment.borderClearanceType}\n\n${assessment.description}`, status: "submitted", notes: `Website assessment completed at ${now}` } as any).select().single()).data;
       if (!quote) throw new Error("Quote was not returned by Supabase");
-      setQuoteId(quote.id);
+      savedQuoteId = quote.id;
+      setQuoteId(savedQuoteId);
       setChecks((c) => ({ ...c, database: true }));
     } catch (error) {
       setAssessErrors({ database: error instanceof Error ? error.message : "Could not save your quote." });
@@ -238,7 +236,7 @@ function AssessmentPage() {
       return;
     }
 
-    const { data: shipment, error: shipmentError } = await supabase.from("shipments").insert({ quote_id: quoteId, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any).select("id").single();
+    const { data: shipment, error: shipmentError } = await supabase.from("shipments").insert({ quote_id: savedQuoteId, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any).select("id").single();
     if (shipmentError || !shipment) {
       setAssessErrors({ database: shipmentError?.message || "Could not create tracking record." });
       setStep(2);
@@ -254,7 +252,8 @@ function AssessmentPage() {
     setTrackingToken(token);
 
     // 2) Email via Resend — with real attachments
-    const emailRes = await sendAssessment({
+    const emailRes = await Promise.race([
+      sendAssessment({
       stage: "completed",
       fullName: lead.fullName,
       company: lead.company,
@@ -268,7 +267,9 @@ function AssessmentPage() {
       borderClearanceType: assessment.borderClearanceType,
       description: assessment.description,
       files,
-    });
+      }),
+      new Promise<{ ok: false; error: string }>((resolve) => setTimeout(() => resolve({ ok: false, error: "Email delivery timed out" }), 10000)),
+    ]);
     if (!emailRes.ok) {
       setAssessErrors({ files: emailRes.error || "Could not send your assessment email. Please try again." });
       setStep(2);
