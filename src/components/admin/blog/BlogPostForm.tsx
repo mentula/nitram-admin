@@ -225,7 +225,10 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
         <Label>Content *</Label>
         <RichTextEditor
           content={content}
-          onChange={setContent}
+          onChange={(value) => {
+            setContent(value);
+            setValue('content', value, { shouldDirty: true, shouldValidate: true });
+          }}
           placeholder="Write your blog post content..."
           minHeight="500px"
         />
