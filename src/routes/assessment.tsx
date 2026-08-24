@@ -8,6 +8,8 @@ import { upsertHubspotLead } from "@/lib/hubspot.functions";
 import { sendAssessment, validateFiles, MAX_FILE_BYTES, MAX_TOTAL_BYTES } from "@/lib/send-assessment";
 import { useCreateLeadFromAssessment } from "@/lib/hooks/useLeads";
 import { useCreateQuoteFromAssessment } from "@/lib/hooks/useQuotes";
+import { supabase } from "@/lib/supabase";
+import { generateTrackingToken } from "@/lib/hooks/useTracking";
 
 
 export const Route = createFileRoute("/assessment")({
@@ -70,6 +72,8 @@ function AssessmentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [contactId, setContactId] = useState<string | undefined>();
   const [leadId, setLeadId] = useState<string | undefined>();
+  const [quoteId, setQuoteId] = useState<string | undefined>();
+  const [trackingToken, setTrackingToken] = useState<string | undefined>();
   const [waLink, setWaLink] = useState<string>("");
   const [statusMsg, setStatusMsg] = useState("Saving your information and preparing your assessment…");
   const [checks, setChecks] = useState({ lead: false, email: false, whatsapp: false, crm: false, database: false, final: false });
@@ -220,24 +224,34 @@ function AssessmentPage() {
       .filter(Boolean)
       .join("\n") || "None uploaded";
 
-    // 1) Save quote to database
-    if (leadId) {
-      try {
-        await createQuoteMutation.mutateAsync({
-          leadId,
-          service: lead.service,
-          origin: assessment.countryOfOrigin,
-          destination: assessment.destination,
-          borderOfEntry: assessment.borderOfEntry,
-          cargoType: assessment.cargoType,
-          cargoDescription: assessment.description,
-          borderClearanceType: assessment.borderClearanceType,
-        });
-        console.log("Quote saved to database successfully");
-      } catch (error) {
-        console.error("Failed to save quote to database:", error);
-      }
+    // 1) Save quote to database even when the lead step was interrupted.
+    try {
+      const quote = leadId
+        ? await createQuoteMutation.mutateAsync({ leadId, service: lead.service, origin: assessment.countryOfOrigin, destination: assessment.destination, borderOfEntry: assessment.borderOfEntry, cargoType: assessment.cargoType, cargoDescription: assessment.description, borderClearanceType: assessment.borderClearanceType })
+        : (await supabase.from("quotes").insert({ requester_name: lead.fullName, requester_email: lead.email, requester_phone: lead.phone, requester_company: lead.company || null, service_type: lead.service, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: `${assessment.cargoType}\n\nBorder of Entry: ${assessment.borderOfEntry}\nBorder Clearance Type: ${assessment.borderClearanceType}\n\n${assessment.description}`, status: "submitted", notes: `Website assessment completed at ${now}` } as any).select().single()).data;
+      if (!quote) throw new Error("Quote was not returned by Supabase");
+      setQuoteId(quote.id);
+      setChecks((c) => ({ ...c, database: true }));
+    } catch (error) {
+      setAssessErrors({ database: error instanceof Error ? error.message : "Could not save your quote." });
+      setStep(2);
+      return;
     }
+
+    const { data: shipment, error: shipmentError } = await supabase.from("shipments").insert({ quote_id: quoteId, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any).select("id").single();
+    if (shipmentError || !shipment) {
+      setAssessErrors({ database: shipmentError?.message || "Could not create tracking record." });
+      setStep(2);
+      return;
+    }
+    const token = generateTrackingToken();
+    const { error: tokenError } = await supabase.from("tracking_tokens").insert({ shipment_id: shipment.id, token, current_step: 1, status: "active" } as any);
+    if (tokenError) {
+      setAssessErrors({ database: tokenError.message });
+      setStep(2);
+      return;
+    }
+    setTrackingToken(token);
 
     // 2) Email via Resend — with real attachments
     const emailRes = await sendAssessment({
@@ -473,7 +487,7 @@ function AssessmentPage() {
           )}
 
           {step === "done" && (
-            <DoneStep waLink={waLink} crmDone={checks.crm} navigate={navigate} />
+            <DoneStep waLink={waLink} crmDone={checks.crm} trackingToken={trackingToken} quoteId={quoteId} navigate={navigate} />
           )}
         </AnimatePresence>
       </div>
@@ -481,7 +495,7 @@ function AssessmentPage() {
   );
 }
 
-function DoneStep({ waLink, crmDone, navigate }: { waLink: string; crmDone: boolean; navigate: ReturnType<typeof useNavigate> }) {
+function DoneStep({ waLink, crmDone, trackingToken, quoteId, navigate }: { waLink: string; crmDone: boolean; trackingToken?: string; quoteId?: string; navigate: ReturnType<typeof useNavigate> }) {
   useEffect(() => {
     const t = setTimeout(() => {
       navigate({ to: "/appoint-nitram" });
@@ -498,6 +512,15 @@ function DoneStep({ waLink, crmDone, navigate }: { waLink: string; crmDone: bool
       <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
         Your assessment has been submitted successfully. One final step remains — appoint Nitram on the ZRA Portal so we can begin your customs clearance.
       </p>
+
+      {(trackingToken || quoteId) && (
+        <div className="mx-auto mt-6 max-w-sm rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 p-4 text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your tracking reference</p>
+          {trackingToken && <p className="mt-1 font-mono text-2xl font-bold tracking-[0.2em]">{trackingToken}</p>}
+          {quoteId && <p className="mt-1 text-xs text-muted-foreground">Quote ID: {quoteId}</p>}
+          {trackingToken && <Link to="/track" search={{ token: trackingToken }} className="mt-3 inline-flex text-sm font-semibold text-[var(--navy)] underline">Track shipment</Link>}
+        </div>
+      )}
 
       <div className="mx-auto mt-8 max-w-sm space-y-2 text-left">
         <ProcessRow label="Initial Lead Captured" done />
