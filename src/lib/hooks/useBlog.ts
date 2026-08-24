@@ -203,7 +203,10 @@ export function useCreateBlogPost() {
       post: BlogPostInsert; 
       tagIds?: string[];
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('You must be signed in to create a blog post.');
+      }
 
       // Ensure unique slug
       const slug = await ensureUniqueSlug(post.slug, 'blog_posts');
@@ -232,15 +235,21 @@ export function useCreateBlogPost() {
             post_id: data.id,
             tag_id: tagId,
           })));
-        if (tagError) throw tagError;
+        if (tagError) {
+          console.error('[v0] Blog post created, but tags could not be saved:', tagError);
+        }
       }
 
-      await logActivity({
-        action: ActivityTypes.BLOG_POST_CREATED,
-        entity_type: 'blog_post',
-        entity_id: data.id,
-        details: { title: data.title, slug: data.slug },
-      });
+      try {
+        await logActivity({
+          action: ActivityTypes.BLOG_POST_CREATED,
+          entity_type: 'blog_post',
+          entity_id: data.id,
+          details: { title: data.title, slug: data.slug },
+        });
+      } catch (activityError) {
+        console.error('[v0] Blog post created, but activity logging failed:', activityError);
+      }
 
       return data;
     },
