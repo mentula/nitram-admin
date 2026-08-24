@@ -187,10 +187,15 @@ CREATE POLICY "Staff can create quotes" ON quotes
 
 CREATE POLICY "Staff can update quotes" ON quotes
   FOR UPDATE USING (
-    has_any_role(ARRAY['super_admin', 'manager', 'sales_agent']::user_role[])
+  has_any_role(ARRAY['super_admin', 'manager', 'sales_agent']::user_role[])
   );
 
--- Only managers can delete quotes
+  -- Website visitors may submit only new quote requests.
+  CREATE POLICY "Public can submit quotes" ON quotes
+    FOR INSERT TO anon, authenticated
+    WITH CHECK (status = 'submitted');
+  
+  -- Only managers can delete quotes
 CREATE POLICY "Managers can delete quotes" ON quotes
   FOR DELETE USING (
     has_any_role(ARRAY['super_admin', 'manager']::user_role[])
