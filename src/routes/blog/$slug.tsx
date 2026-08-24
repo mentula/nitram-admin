@@ -74,8 +74,20 @@ function BlogPostPage() {
     toast.success("Link copied to clipboard");
   };
 
+  const canonicalUrl = post.canonical_url || `${window.location.origin}/blog/${post.slug}`;
+  const description = post.seo_description || post.excerpt || `Read ${post.title} from Nitram Logistics Limited.`;
+  const structuredData = {
+    '@context': 'https://schema.org', '@type': 'BlogPosting',
+    headline: post.title, description, url: canonicalUrl,
+    image: post.featured_image ? [post.featured_image] : undefined,
+    author: post.author ? { '@type': 'Person', name: post.author.name } : undefined,
+    publisher: { '@type': 'Organization', name: 'Nitram Logistics Limited' },
+    datePublished: post.published_at, dateModified: post.updated_at,
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <PageHero
         eyebrow={post.category?.name}
         title={post.title}

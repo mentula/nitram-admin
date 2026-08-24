@@ -68,6 +68,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<BlogPostFormData>({
     resolver: zodResolver(blogPostSchema),
@@ -90,6 +91,20 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
 
   const title = watch('title');
   const status = watch('status');
+
+  useEffect(() => {
+    reset({
+      title: post?.title || '', slug: post?.slug || '', excerpt: post?.excerpt || '',
+      content: post?.content || '', featured_image: post?.featured_image || '',
+      seo_title: post?.seo_title || '', seo_description: post?.seo_description || '',
+      canonical_url: post?.canonical_url || '', author_id: post?.author_id || '',
+      category_id: post?.category_id || '', status: post?.status || 'draft',
+      published: post?.published || false, scheduled_at: post?.scheduled_at || '',
+    });
+    setContent(post?.content || '');
+    setSelectedTags(post?.tags?.map((tag: any) => tag.id) || []);
+    setScheduledDate(post?.scheduled_at ? new Date(post.scheduled_at) : undefined);
+  }, [post, reset]);
 
   // Auto-generate slug from title
   useEffect(() => {

@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { useBlogPosts, useCreateBlogPost, useUpdateBlogPost } from '@/lib/hooks/useBlog';
+import { useBlogPosts, useBlogPost, useCreateBlogPost, useUpdateBlogPost } from '@/lib/hooks/useBlog';
 import { BlogPostList } from '@/components/admin/blog/BlogPostList';
 import { BlogPostForm } from '@/components/admin/blog/BlogPostForm';
 import { BlogCategoryManager } from '@/components/admin/blog/BlogCategoryManager';
@@ -34,8 +34,13 @@ export const Route = createFileRoute('/admin/blog/')({
 function BlogAdminPage() {
   const navigate = useNavigate();
   const { data: posts } = useBlogPosts();
+  const { data: loadedPost, isLoading: isLoadingPost, error: postError } = useBlogPost(editingPostId);
   const createPost = useCreateBlogPost();
   const updatePost = useUpdateBlogPost();
+
+  useEffect(() => {
+    if (editingPostId && loadedPost) setEditingPost(loadedPost);
+  }, [editingPostId, loadedPost]);
 
   const [activeTab, setActiveTab] = useState('posts');
   const [dialogOpen, setDialogOpen] = useState(false);
