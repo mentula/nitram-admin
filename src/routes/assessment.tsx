@@ -124,7 +124,7 @@ function AssessmentPage() {
         email: lead.email,
         phone: lead.phone,
         service_needed: lead.service,
-        source: "Website Assessment",
+        source: "website_quote_form",
         status: "new",
         notes: `Lead captured from website assessment form at ${now}`,
       } as any);
@@ -227,13 +227,11 @@ function AssessmentPage() {
     let savedQuoteId: string;
     try {
       savedQuoteId = crypto.randomUUID();
+      const quoteNumber = `Q-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${savedQuoteId.slice(0, 8).toUpperCase()}`;
       const { error: quoteError } = await supabase.from("quotes").insert({
         id: savedQuoteId,
+        quote_number: quoteNumber,
         lead_id: leadId || null,
-        requester_name: lead.fullName,
-        requester_email: lead.email,
-        requester_phone: lead.phone,
-        requester_company: lead.company || null,
         service_type: lead.service,
         origin: assessment.countryOfOrigin,
         destination: assessment.destination,
@@ -251,7 +249,8 @@ function AssessmentPage() {
     }
 
     const shipmentId = crypto.randomUUID();
-    const { error: shipmentError } = await supabase.from("shipments").insert({ id: shipmentId, quote_id: savedQuoteId, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any);
+    const shipmentNumber = `S-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${shipmentId.slice(0, 8).toUpperCase()}`;
+    const { error: shipmentError } = await supabase.from("shipments").insert({ id: shipmentId, shipment_number: shipmentNumber, quote_id: savedQuoteId, origin: assessment.countryOfOrigin || "To be confirmed", destination: assessment.destination || "To be confirmed", cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any);
     if (shipmentError) {
       setAssessErrors({ database: shipmentError.message || "Could not create tracking record." });
       setStep(2);
