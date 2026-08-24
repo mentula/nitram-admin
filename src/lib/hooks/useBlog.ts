@@ -211,16 +211,23 @@ export function useCreateBlogPost() {
       // Ensure unique slug
       const slug = await ensureUniqueSlug(post.slug, 'blog_posts');
 
-      // Remove tagIds before insert — they belong in blog_post_tags, not blog_posts
-      const { tagIds: _tagIds, ...postData } = post as any;
+      // Build an explicit database payload. Form-only fields and undefined values
+      // must not be sent to PostgREST because they can cause schema errors.
+      const { tagIds: _tagIds, ...formData } = post as any;
+      const postData = Object.fromEntries(
+        Object.entries(formData).filter(([, value]) => value !== undefined)
+      );
 
       const { data, error } = await supabase
         .from('blog_posts')
         .insert({
           ...postData,
           slug,
-          created_by: user?.id,
-          updated_by: user?.id,
+          content: String(postData.content ?? '').trim(),
+          published: postData.status === 'published',
+          published_at: postData.status === 'published' ? new Date().toISOString() : null,
+          created_by: user.id,
+          updated_by: user.id,
         })
         .select()
         .single();

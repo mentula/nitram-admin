@@ -93,7 +93,9 @@ function BlogAdminPage() {
       setEditingPostId(null);
       setEditingPost(null);
     } catch (error) {
-      toast.error(editingPostId ? 'Failed to update post' : 'Failed to create post');
+      console.error('[v0] Blog post save failed:', error);
+      const message = error instanceof Error ? error.message : 'Unknown database error';
+      toast.error(`${editingPostId ? 'Failed to update post' : 'Failed to create post'}: ${message}`);
     }
   };
 
