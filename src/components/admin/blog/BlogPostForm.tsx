@@ -138,13 +138,13 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
       const filePath = `blog-featured/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('blog-images')
+        .from('public')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('blog-images')
+        .from('public')
         .getPublicUrl(filePath);
 
       setValue('featured_image', publicUrl);
