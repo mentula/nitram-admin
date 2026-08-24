@@ -6,8 +6,6 @@ import { COMPANY, SERVICE_OPTIONS } from "@/lib/site-data";
 import { CONTACT, buildWhatsAppLink } from "@/config/contact";
 import { upsertHubspotLead } from "@/lib/hubspot.functions";
 import { sendAssessment, validateFiles, MAX_FILE_BYTES, MAX_TOTAL_BYTES } from "@/lib/send-assessment";
-import { useCreateLeadFromAssessment } from "@/lib/hooks/useLeads";
-import { useCreateQuoteFromAssessment } from "@/lib/hooks/useQuotes";
 import { supabase } from "@/lib/supabase";
 import { generateTrackingToken } from "@/lib/hooks/useTracking";
 
@@ -78,10 +76,6 @@ function AssessmentPage() {
   const [statusMsg, setStatusMsg] = useState("Saving your information and preparing your assessment…");
   const [checks, setChecks] = useState({ lead: false, email: false, whatsapp: false, crm: false, database: false, final: false });
 
-  // Database mutations
-  const createLeadMutation = useCreateLeadFromAssessment();
-  const createQuoteMutation = useCreateQuoteFromAssessment();
-
   useEffect(() => {
     const el = document.getElementById("assessment-top");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -122,14 +116,20 @@ function AssessmentPage() {
     // 1) Save to database first (most important!)
     setStatusMsg("Saving your information to our database…");
     try {
-      const dbLead = await createLeadMutation.mutateAsync({
-        fullName: lead.fullName,
-        company: lead.company,
+      const newLeadId = crypto.randomUUID();
+      const { error: leadError } = await supabase.from("leads").insert({
+        id: newLeadId,
+        contact_name: lead.fullName,
+        company_name: lead.company || null,
         email: lead.email,
         phone: lead.phone,
-        service: lead.service,
-      });
-      setLeadId(dbLead.id);
+        service_needed: lead.service,
+        source: "Website Assessment",
+        status: "new",
+        notes: `Lead captured from website assessment form at ${now}`,
+      } as any);
+      if (leadError) throw leadError;
+      setLeadId(newLeadId);
       setChecks((c) => ({ ...c, database: true, lead: true }));
     } catch (error) {
       console.error("Failed to save lead to database:", error);
@@ -226,11 +226,22 @@ function AssessmentPage() {
     // 1) Save quote to database even when the lead step was interrupted.
     let savedQuoteId: string;
     try {
-      const quote = leadId
-        ? await createQuoteMutation.mutateAsync({ leadId, service: lead.service, origin: assessment.countryOfOrigin, destination: assessment.destination, borderOfEntry: assessment.borderOfEntry, cargoType: assessment.cargoType, cargoDescription: assessment.description, borderClearanceType: assessment.borderClearanceType })
-        : (await supabase.from("quotes").insert({ requester_name: lead.fullName, requester_email: lead.email, requester_phone: lead.phone, requester_company: lead.company || null, service_type: lead.service, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: `${assessment.cargoType}\n\nBorder of Entry: ${assessment.borderOfEntry}\nBorder Clearance Type: ${assessment.borderClearanceType}\n\n${assessment.description}`, status: "submitted", notes: `Website assessment completed at ${now}` } as any).select().single()).data;
-      if (!quote) throw new Error("Quote was not returned by Supabase");
-      savedQuoteId = quote.id;
+      savedQuoteId = crypto.randomUUID();
+      const { error: quoteError } = await supabase.from("quotes").insert({
+        id: savedQuoteId,
+        lead_id: leadId || null,
+        requester_name: lead.fullName,
+        requester_email: lead.email,
+        requester_phone: lead.phone,
+        requester_company: lead.company || null,
+        service_type: lead.service,
+        origin: assessment.countryOfOrigin,
+        destination: assessment.destination,
+        cargo_description: `${assessment.cargoType}\n\nBorder of Entry: ${assessment.borderOfEntry}\nBorder Clearance Type: ${assessment.borderClearanceType}\n\n${assessment.description}`,
+        status: "submitted",
+        notes: `Website assessment completed at ${now}`,
+      } as any);
+      if (quoteError) throw quoteError;
       setQuoteId(savedQuoteId);
       setChecks((c) => ({ ...c, database: true }));
     } catch (error) {
@@ -239,14 +250,15 @@ function AssessmentPage() {
       return;
     }
 
-    const { data: shipment, error: shipmentError } = await supabase.from("shipments").insert({ quote_id: savedQuoteId, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any).select("id").single();
-    if (shipmentError || !shipment) {
-      setAssessErrors({ database: shipmentError?.message || "Could not create tracking record." });
+    const shipmentId = crypto.randomUUID();
+    const { error: shipmentError } = await supabase.from("shipments").insert({ id: shipmentId, quote_id: savedQuoteId, origin: assessment.countryOfOrigin, destination: assessment.destination, cargo_description: assessment.description || assessment.cargoType, status: "awaiting_collection" } as any);
+    if (shipmentError) {
+      setAssessErrors({ database: shipmentError.message || "Could not create tracking record." });
       setStep(2);
       return;
     }
     const token = generateTrackingToken();
-    const { error: tokenError } = await supabase.from("tracking_tokens").insert({ shipment_id: shipment.id, token, current_step: 1, status: "active" } as any);
+    const { error: tokenError } = await supabase.from("tracking_tokens").insert({ shipment_id: shipmentId, token, current_step: 1, status: "active" } as any);
     if (tokenError) {
       setAssessErrors({ database: tokenError.message });
       setStep(2);
