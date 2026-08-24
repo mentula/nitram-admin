@@ -63,7 +63,6 @@ export function useCreateLead() {
       const { data, error } = await (supabase
         .from('leads')
         .insert(lead as any)
-        .select('*')
         .select('*') as any);
 
       if (error) throw error;
@@ -156,7 +155,7 @@ export function useCreateLeadFromAssessment() {
           notes: `Lead captured from website assessment form at ${new Date().toLocaleString()}`,
         } as any)
         .select('*')
-        .select('*') as any);
+        .single() as any);
 
       if (error) throw error;
       return lead as Lead;

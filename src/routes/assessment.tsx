@@ -274,9 +274,10 @@ function AssessmentPage() {
       new Promise<{ ok: false; error: string }>((resolve) => setTimeout(() => resolve({ ok: false, error: "Email delivery timed out" }), 10000)),
     ]);
     if (!emailRes.ok) {
-      setAssessErrors({ files: emailRes.error || "Could not send your assessment email. Please try again." });
-      setStep(2);
-      return;
+      setAssessErrors({ email: emailRes.error || "Email notification could not be delivered." });
+      setChecks((c) => ({ ...c, email: false }));
+    } else {
+      setChecks((c) => ({ ...c, email: true }));
     }
 
     // 3) WhatsApp — build a link the user can click on the Thank You page.
