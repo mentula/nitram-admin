@@ -90,6 +90,8 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
 
   const title = watch('title');
   const status = watch('status');
+  const seoTitle = watch('seo_title') || title || '';
+  const seoDescription = watch('seo_description') || watch('excerpt') || '';
 
   // Auto-generate slug from title
   useEffect(() => {
@@ -386,7 +388,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
             placeholder="Leave empty to use post title"
           />
           <p className="text-xs text-muted-foreground">
-            Optimal length: 50-60 characters
+            {seoTitle.length}/60 characters · recommended 50–60
           </p>
         </div>
 
@@ -399,7 +401,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
             rows={2}
           />
           <p className="text-xs text-muted-foreground">
-            Optimal length: 150-160 characters
+            {seoDescription.length}/160 characters · recommended 150–160
           </p>
         </div>
 

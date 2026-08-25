@@ -11,15 +11,22 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/blog/$slug")({
   head: ({ params }) => {
     const fallbackTitle = "Article — Nitram Logistics";
-    const fallbackDescription =
-      "Read this logistics insights article from Nitram Logistics Limited.";
+    const fallbackDescription = "Read this logistics insights article from Nitram Logistics Limited.";
+    const url = `${import.meta.env.VITE_SITE_URL || "https://nitramclearing.co.zm"}/blog/${params.slug}`;
     return {
       meta: [
         { title: fallbackTitle },
         { name: "description", content: fallbackDescription },
+        { name: "robots", content: "index,follow,max-image-preview:large" },
         { property: "og:title", content: fallbackTitle },
         { property: "og:description", content: fallbackDescription },
+        { property: "og:type", content: "article" },
+        { property: "og:url", content: url },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: fallbackTitle },
+        { name: "twitter:description", content: fallbackDescription },
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: BlogPostPage,

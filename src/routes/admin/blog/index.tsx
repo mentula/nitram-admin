@@ -86,7 +86,7 @@ function BlogAdminPage() {
       setEditingPostId(null);
       setEditingPost(null);
     } catch (error) {
-      toast.error(editingPostId ? 'Failed to update post' : 'Failed to create post');
+      toast.error(error instanceof Error ? error.message : (editingPostId ? 'Failed to update post' : 'Failed to create post'));
     }
   };
 
