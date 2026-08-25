@@ -200,11 +200,20 @@ export function useCreateBlogPost() {
       const postId = crypto.randomUUID();
       const payload: any = {
         id: postId,
-        ...postData,
+        title: String(postData.title ?? '').trim(),
         slug,
+        excerpt: String(postData.excerpt ?? '').trim() || null,
         content: String(postData.content ?? '').trim(),
+        featured_image: String(postData.featured_image ?? '').trim() || null,
+        seo_title: String(postData.seo_title ?? '').trim() || null,
+        seo_description: String(postData.seo_description ?? '').trim() || null,
+        canonical_url: String(postData.canonical_url ?? '').trim() || null,
+        author_id: postData.author_id || null,
+        category_id: postData.category_id || null,
+        status: postData.status || 'draft',
         published: postData.status === 'published',
         published_at: postData.status === 'published' ? new Date().toISOString() : null,
+        scheduled_at: postData.status === 'scheduled' ? postData.scheduled_at || null : null,
         created_by: user.id,
         updated_by: user.id,
       };
@@ -273,7 +282,18 @@ export function useUpdateBlogPost() {
       // Ensure unique slug if slug is being updated
       // Remove tagIds before update — they belong in blog_post_tags, not blog_posts
       const { tagIds: _tagIds, ...updatesData } = updates as any;
-      let finalUpdates = { ...updatesData, updated_by: user?.id };
+      let finalUpdates: any = {
+        ...updatesData,
+        excerpt: String(updatesData.excerpt ?? '').trim() || null,
+        featured_image: String(updatesData.featured_image ?? '').trim() || null,
+        seo_title: String(updatesData.seo_title ?? '').trim() || null,
+        seo_description: String(updatesData.seo_description ?? '').trim() || null,
+        canonical_url: String(updatesData.canonical_url ?? '').trim() || null,
+        author_id: updatesData.author_id || null,
+        category_id: updatesData.category_id || null,
+        scheduled_at: updatesData.status === 'scheduled' ? updatesData.scheduled_at || null : null,
+        updated_by: user?.id,
+      };
       if (updates.slug) {
         finalUpdates.slug = await ensureUniqueSlug(updates.slug, 'blog_posts', id);
       }

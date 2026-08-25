@@ -81,8 +81,8 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
       seo_title: post?.seo_title || '',
       seo_description: post?.seo_description || '',
       canonical_url: post?.canonical_url || '',
-      author_id: post?.author_id || '',
-      category_id: post?.category_id || '',
+      author_id: post?.author_id || undefined,
+      category_id: post?.category_id || undefined,
       status: post?.status || 'draft',
       published: post?.published || false,
       scheduled_at: post?.scheduled_at || '',
@@ -160,9 +160,17 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
   };
 
   const handleFormSubmit = async (data: BlogPostFormData) => {
+    if (data.status === 'scheduled' && !scheduledDate) {
+      toast.error('Choose a publication date for scheduled posts.');
+      return;
+    }
     await onSubmit({
       ...data,
-      content,
+      content: content.trim(),
+      author_id: data.author_id || undefined,
+      category_id: data.category_id || undefined,
+      scheduled_at: data.status === 'scheduled' ? data.scheduled_at : undefined,
+      published: data.status === 'published',
       tagIds: selectedTags,
     });
   };
@@ -279,7 +287,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
           <Label htmlFor="category">Category</Label>
           <Select
             value={watch('category_id') || 'none'}
-            onValueChange={(value) => setValue('category_id', value === 'none' ? undefined : value)}
+            onValueChange={(value) => setValue('category_id', value === 'none' ? undefined : value, { shouldDirty: true, shouldValidate: true })}
           >
             <SelectTrigger id="category">
               <SelectValue placeholder="Select category" />
@@ -300,7 +308,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
           <Label htmlFor="author">Author</Label>
           <Select
             value={watch('author_id') || 'none'}
-            onValueChange={(value) => setValue('author_id', value === 'none' ? undefined : value)}
+            onValueChange={(value) => setValue('author_id', value === 'none' ? undefined : value, { shouldDirty: true, shouldValidate: true })}
           >
             <SelectTrigger id="author">
               <SelectValue placeholder="Select author" />
