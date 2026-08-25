@@ -23,13 +23,17 @@ type BlogAuthorUpdate = Database['public']['Tables']['blog_authors']['Update'];
  * Generate URL-friendly slug from title
  */
 export function generateSlug(title: string): string {
-  return title
+  const slug = title
+    .normalize('NFKD')
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || `article-${Date.now()}`;
 }
 
 /**
@@ -81,7 +85,8 @@ export function useBlogPosts(filters?: {
         .select(`
           *,
           author:blog_authors(id, name, avatar_url),
-          category:blog_categories(id, name, slug)
+          category:blog_categories(id, name, slug),
+          tags:blog_post_tags(tag:blog_tags(id, name, slug))
         `)
         .order('created_at', { ascending: false });
 
@@ -104,7 +109,10 @@ export function useBlogPosts(filters?: {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data;
+      return (data ?? []).map((post: any) => ({
+        ...post,
+        tags: (post.tags ?? []).map((item: any) => item.tag).filter(Boolean),
+      }));
     },
   });
 }
@@ -195,21 +203,31 @@ export function useCreateBlogPost() {
       post: BlogPostInsert; 
       tagIds?: string[];
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('You must be signed in to create a blog post.');
+      }
 
       // Ensure unique slug
       const slug = await ensureUniqueSlug(post.slug, 'blog_posts');
 
-      // Remove tagIds before insert — they belong in blog_post_tags, not blog_posts
-      const { tagIds: _tagIds, ...postData } = post as any;
+      // Build an explicit database payload. Form-only fields and undefined values
+      // must not be sent to PostgREST because they can cause schema errors.
+      const { tagIds: _tagIds, ...formData } = post as any;
+      const postData = Object.fromEntries(
+        Object.entries(formData).filter(([, value]) => value !== undefined)
+      );
 
       const { data, error } = await supabase
         .from('blog_posts')
         .insert({
           ...postData,
           slug,
-          created_by: user?.id,
-          updated_by: user?.id,
+          content: String(postData.content ?? '').trim(),
+          published: postData.status === 'published',
+          published_at: postData.status === 'published' ? new Date().toISOString() : null,
+          created_by: user.id,
+          updated_by: user.id,
         })
         .select('id, title, slug, published, status, published_at, view_count')
         .single();
@@ -218,20 +236,27 @@ export function useCreateBlogPost() {
 
       // Add tags if provided
       if (tagIds && tagIds.length > 0) {
-        await supabase
+        const { error: tagError } = await supabase
           .from('blog_post_tags')
           .insert(tagIds.map(tagId => ({
             post_id: data.id,
             tag_id: tagId,
           })));
+        if (tagError) {
+          console.error('[v0] Blog post created, but tags could not be saved:', tagError);
+        }
       }
 
-      await logActivity({
-        action: ActivityTypes.BLOG_POST_CREATED,
-        entity_type: 'blog_post',
-        entity_id: data.id,
-        details: { title: data.title, slug: data.slug },
-      });
+      try {
+        await logActivity({
+          action: ActivityTypes.BLOG_POST_CREATED,
+          entity_type: 'blog_post',
+          entity_id: data.id,
+          details: { title: data.title, slug: data.slug },
+        });
+      } catch (activityError) {
+        console.error('[v0] Blog post created, but activity logging failed:', activityError);
+      }
 
       return data;
     },
@@ -276,19 +301,20 @@ export function useUpdateBlogPost() {
       // Update tags if provided
       if (tagIds !== undefined) {
         // Delete existing tags
-        await supabase
+        const { error: deleteTagsError } = await supabase
           .from('blog_post_tags')
           .delete()
           .eq('post_id', id);
+        if (deleteTagsError) throw deleteTagsError;
 
-        // Add new tags
         if (tagIds.length > 0) {
-          await supabase
+          const { error: insertTagsError } = await supabase
             .from('blog_post_tags')
             .insert(tagIds.map(tagId => ({
               post_id: id,
               tag_id: tagId,
             })));
+          if (insertTagsError) throw insertTagsError;
         }
       }
 

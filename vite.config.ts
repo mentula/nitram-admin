@@ -20,6 +20,9 @@ export default defineConfig({
     preset: "vercel",
   },
   vite: {
+    // Supabase variables are injected by Vercel with NEXT_PUBLIC_ prefixes.
+    // Expose both Vite and Next-style prefixes to the browser bundle.
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
     plugins: [],
   },
 });

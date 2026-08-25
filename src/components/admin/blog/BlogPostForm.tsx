@@ -68,6 +68,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<BlogPostFormData>({
     resolver: zodResolver(blogPostSchema),
@@ -92,6 +93,20 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
   const status = watch('status');
   const seoTitle = watch('seo_title') || title || '';
   const seoDescription = watch('seo_description') || watch('excerpt') || '';
+
+  useEffect(() => {
+    reset({
+      title: post?.title || '', slug: post?.slug || '', excerpt: post?.excerpt || '',
+      content: post?.content || '', featured_image: post?.featured_image || '',
+      seo_title: post?.seo_title || '', seo_description: post?.seo_description || '',
+      canonical_url: post?.canonical_url || '', author_id: post?.author_id || '',
+      category_id: post?.category_id || '', status: post?.status || 'draft',
+      published: post?.published || false, scheduled_at: post?.scheduled_at || '',
+    });
+    setContent(post?.content || '');
+    setSelectedTags(post?.tags?.map((tag: any) => tag.id) || []);
+    setScheduledDate(post?.scheduled_at ? new Date(post.scheduled_at) : undefined);
+  }, [post, reset]);
 
   // Auto-generate slug from title
   useEffect(() => {
@@ -125,13 +140,13 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
       const filePath = `blog-featured/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('blog-images')
+        .from('public')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('blog-images')
+        .from('public')
         .getPublicUrl(filePath);
 
       setValue('featured_image', publicUrl);
@@ -212,7 +227,10 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
         <Label>Content *</Label>
         <RichTextEditor
           content={content}
-          onChange={setContent}
+          onChange={(value) => {
+            setContent(value);
+            setValue('content', value, { shouldDirty: true, shouldValidate: true });
+          }}
           placeholder="Write your blog post content..."
           minHeight="500px"
         />

@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { useBlogPosts, useCreateBlogPost, useUpdateBlogPost } from '@/lib/hooks/useBlog';
+import { useBlogPosts, useBlogPost, useCreateBlogPost, useUpdateBlogPost } from '@/lib/hooks/useBlog';
 import { BlogPostList } from '@/components/admin/blog/BlogPostList';
 import { BlogPostForm } from '@/components/admin/blog/BlogPostForm';
 import { BlogCategoryManager } from '@/components/admin/blog/BlogCategoryManager';
@@ -33,14 +33,21 @@ export const Route = createFileRoute('/admin/blog/')({
 
 function BlogAdminPage() {
   const navigate = useNavigate();
-  const { data: posts } = useBlogPosts();
-  const createPost = useCreateBlogPost();
-  const updatePost = useUpdateBlogPost();
-
   const [activeTab, setActiveTab] = useState('posts');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingPost, setEditingPost] = useState<any>(null);
+  const { data: posts } = useBlogPosts();
+  const { data: loadedPost } = useBlogPost(editingPostId);
+  const createPost = useCreateBlogPost();
+  const updatePost = useUpdateBlogPost();
+
+  useEffect(() => {
+    if (editingPostId && loadedPost) {
+      setEditingPost(loadedPost);
+      setDialogOpen(true);
+    }
+  }, [editingPostId, loadedPost]);
 
   // Calculate KPIs
   const totalPosts = posts?.length || 0;
@@ -86,7 +93,8 @@ function BlogAdminPage() {
       setEditingPostId(null);
       setEditingPost(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : (editingPostId ? 'Failed to update post' : 'Failed to create post'));
+      const message = error instanceof Error ? error.message : 'Unknown database error';
+      toast.error(`${editingPostId ? 'Failed to update post' : 'Failed to create post'}: ${message}`);
     }
   };
 
