@@ -218,21 +218,31 @@ export function useCreateBlogPost() {
         Object.entries(formData).filter(([, value]) => value !== undefined)
       );
 
-      const { data, error } = await supabase
+      const postId = crypto.randomUUID();
+      const payload: any = {
+        id: postId,
+        ...postData,
+        slug,
+        content: String(postData.content ?? '').trim(),
+        published: postData.status === 'published',
+        published_at: postData.status === 'published' ? new Date().toISOString() : null,
+        created_by: user.id,
+        updated_by: user.id,
+      };
+      const { error } = await supabase
         .from('blog_posts')
-        .insert({
-          ...postData,
-          slug,
-          content: String(postData.content ?? '').trim(),
-          published: postData.status === 'published',
-          published_at: postData.status === 'published' ? new Date().toISOString() : null,
-          created_by: user.id,
-          updated_by: user.id,
-        })
-        .select('id, title, slug, published, status, published_at, view_count')
-        .single();
+        .insert(payload);
 
       if (error) throw error;
+      const data = {
+        id: postId,
+        title: String(payload.title ?? ''),
+        slug,
+        published: Boolean(payload.published),
+        status: String(payload.status ?? 'draft'),
+        published_at: payload.published_at,
+        view_count: 0,
+      };
 
       // Add tags if provided
       if (tagIds && tagIds.length > 0) {
