@@ -76,7 +76,7 @@ export function BlogPostList({ onEdit, onView }: BlogPostListProps) {
       setDeleteDialogOpen(false);
       setPostToDelete(null);
     } catch (error) {
-      toast.error('Failed to delete post');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete post');
     }
   };
 
@@ -85,7 +85,7 @@ export function BlogPostList({ onEdit, onView }: BlogPostListProps) {
       await publishPost.mutateAsync({ id: postId, publish: !currentlyPublished });
       toast.success(currentlyPublished ? 'Post unpublished' : 'Post published successfully');
     } catch (error) {
-      toast.error('Failed to update post');
+      toast.error(error instanceof Error ? error.message : 'Failed to update post');
     }
   };
 

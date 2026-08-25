@@ -171,8 +171,8 @@ export function useBlogPostBySlug(slug: string | null) {
 
       if (error) throw error;
 
-      // Increment view count
-      await supabase
+      // Analytics must never block an article from rendering.
+      void supabase
         .from('blog_posts')
         .update({ view_count: data.view_count + 1 })
         .eq('id', data.id);
@@ -229,7 +229,7 @@ export function useCreateBlogPost() {
           created_by: user.id,
           updated_by: user.id,
         })
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -293,7 +293,7 @@ export function useUpdateBlogPost() {
         .from('blog_posts')
         .update(finalUpdates)
         .eq('id', id)
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -352,7 +352,7 @@ export function usePublishBlogPost() {
         .from('blog_posts')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -432,7 +432,7 @@ export function useCreateBlogCategory() {
       const { data, error } = await supabase
         .from('blog_categories')
         .insert({ ...category, slug })
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -458,7 +458,7 @@ export function useUpdateBlogCategory() {
         .from('blog_categories')
         .update(finalUpdates)
         .eq('id', id)
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -517,7 +517,7 @@ export function useCreateBlogTag() {
       const { data, error } = await supabase
         .from('blog_tags')
         .insert({ ...tag, slug })
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -543,7 +543,7 @@ export function useUpdateBlogTag() {
         .from('blog_tags')
         .update(finalUpdates)
         .eq('id', id)
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -606,7 +606,7 @@ export function useCreateBlogAuthor() {
       const { data, error } = await supabase
         .from('blog_authors')
         .insert(author)
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;
@@ -627,7 +627,7 @@ export function useUpdateBlogAuthor() {
         .from('blog_authors')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select('id, title, slug, published, status, published_at, view_count')
         .single();
 
       if (error) throw error;

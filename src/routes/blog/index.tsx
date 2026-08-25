@@ -40,7 +40,7 @@ function BlogPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [tagFilter, setTagFilter] = useState<string>("");
 
-  const { data: posts, isLoading } = useBlogPosts({
+  const { data: posts, isLoading, isError, error } = useBlogPosts({
     published: true,
     search: search || undefined,
     category_id: categoryFilter || undefined,
@@ -105,6 +105,11 @@ function BlogPage() {
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--gold)] border-t-transparent" />
+            </div>
+          ) : isError ? (
+            <div className="py-20 text-center">
+              <p className="font-semibold text-destructive">Blog posts could not be loaded.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : "Please try again later."}</p>
             </div>
           ) : filteredPosts && filteredPosts.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
