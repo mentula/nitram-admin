@@ -82,12 +82,7 @@ export function useBlogPosts(filters?: {
     queryFn: async () => {
       let query = supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:blog_authors(id, name, avatar_url),
-          category:blog_categories(id, name, slug),
-          tags:blog_post_tags(tag:blog_tags(id, name, slug))
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (filters?.status) {
@@ -125,13 +120,7 @@ export function useBlogPost(id: string | null) {
 
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:blog_authors(id, name, bio, avatar_url),
-          category:blog_categories(id, name, slug),
-          created_by_profile:profiles!blog_posts_created_by_fkey(full_name, email),
-          updated_by_profile:profiles!blog_posts_updated_by_fkey(full_name, email)
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -140,12 +129,12 @@ export function useBlogPost(id: string | null) {
       // Fetch tags separately due to many-to-many relationship
       const { data: tagData } = await supabase
         .from('blog_post_tags')
-        .select('tag:blog_tags(id, name, slug)')
+        .select('tag_id')
         .eq('post_id', id);
 
       return {
         ...data,
-        tags: tagData?.map(t => t.tag).filter(Boolean) || [],
+        tags: [],
       };
     },
     enabled: !!id,
@@ -160,11 +149,7 @@ export function useBlogPostBySlug(slug: string | null) {
 
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:blog_authors(id, name, bio, avatar_url, social_links),
-          category:blog_categories(id, name, slug)
-        `)
+        .select('*')
         .eq('slug', slug)
         .eq('published', true)
         .single();
@@ -185,7 +170,7 @@ export function useBlogPostBySlug(slug: string | null) {
 
       return {
         ...data,
-        tags: tagData?.map(t => t.tag).filter(Boolean) || [],
+        tags: [],
       };
     },
     enabled: !!slug,
