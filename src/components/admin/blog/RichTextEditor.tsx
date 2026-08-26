@@ -126,6 +126,15 @@ export function RichTextEditor({
       return;
     }
 
+    if (!imageFile.type.startsWith('image/')) {
+      toast.error('Please select an image file.');
+      return;
+    }
+    if (imageFile.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
     setUploading(true);
     try {
       const fileExt = imageFile.name.split('.').pop();
@@ -134,7 +143,7 @@ export function RichTextEditor({
 
       const { error: uploadError } = await supabase.storage
         .from('public')
-        .upload(filePath, imageFile);
+        .upload(filePath, imageFile, { contentType: imageFile.type, cacheControl: '3600', upsert: false });
 
       if (uploadError) throw uploadError;
 

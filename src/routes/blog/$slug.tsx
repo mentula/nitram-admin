@@ -137,13 +137,15 @@ function BlogPostPage() {
                   src={post.featured_image}
                   alt={post.title}
                   className="h-auto w-full object-cover"
+                  loading="eager"
+                  onError={(event) => { event.currentTarget.style.display = 'none'; }}
                 />
               </div>
             )}
 
             {/* Content */}
             <div
-              className="prose prose-lg max-w-none"
+              className="prose prose-lg max-w-none [&_img]:my-8 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xl [&_img]:object-contain"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
 
