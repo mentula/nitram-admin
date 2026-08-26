@@ -128,8 +128,14 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file.');
+      e.target.value = '';
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image must be less than 5MB');
+      e.target.value = '';
       return;
     }
 
@@ -141,7 +147,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
 
       const { error: uploadError } = await supabase.storage
         .from('public')
-        .upload(filePath, file);
+        .upload(filePath, file, { contentType: file.type, cacheControl: '3600', upsert: false });
 
       if (uploadError) throw uploadError;
 
