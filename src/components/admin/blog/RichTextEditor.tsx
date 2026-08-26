@@ -93,6 +93,14 @@ export function RichTextEditor({
     },
   });
 
+  // Keep the editor synchronized when loading an existing post or switching drafts.
+  useEffect(() => {
+    if (editor && content !== editor.getHTML() && content !== markdownContent) {
+      editor.commands.setContent(content || '', false);
+      setMarkdownContent(content || '');
+    }
+  }, [content, editor]);
+
   // Sync editor content when switching modes
   useEffect(() => {
     if (mode === 'markdown' && editor) {
@@ -120,6 +128,7 @@ export function RichTextEditor({
     if (!imageFile) {
       if (imageUrl && editor) {
         editor.chain().focus().setImage({ src: imageUrl }).run();
+        onChange(editor.getHTML());
         setImageUrl('');
         setImageDialogOpen(false);
       }
@@ -153,6 +162,7 @@ export function RichTextEditor({
 
       if (editor) {
         editor.chain().focus().setImage({ src: publicUrl }).run();
+        onChange(editor.getHTML());
       }
 
       toast.success('Image uploaded successfully');

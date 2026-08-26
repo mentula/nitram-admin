@@ -99,8 +99,8 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
       title: post?.title || '', slug: post?.slug || '', excerpt: post?.excerpt || '',
       content: post?.content || '', featured_image: post?.featured_image || '',
       seo_title: post?.seo_title || '', seo_description: post?.seo_description || '',
-      canonical_url: post?.canonical_url || '', author_id: post?.author_id || '',
-      category_id: post?.category_id || '', status: post?.status || 'draft',
+      canonical_url: post?.canonical_url || '', author_id: post?.author_id || undefined,
+      category_id: post?.category_id || undefined, status: post?.status || 'draft',
       published: post?.published || false, scheduled_at: post?.scheduled_at || '',
     });
     setContent(post?.content || '');

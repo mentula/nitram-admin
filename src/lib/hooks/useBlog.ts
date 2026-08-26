@@ -104,9 +104,24 @@ export function useBlogPosts(filters?: {
       const { data, error } = await query;
 
       if (error) throw error;
-      return (data ?? []).map((post: any) => ({
+      const posts = data ?? [];
+      const postIds = posts.map((post: any) => post.id).filter(Boolean);
+      const categoryIds = [...new Set(posts.map((post: any) => post.category_id).filter(Boolean))];
+      const authorIds = [...new Set(posts.map((post: any) => post.author_id).filter(Boolean))];
+      const [{ data: tagLinks }, { data: categoryRows }, { data: authorRows }] = await Promise.all([
+        postIds.length ? supabase.from('blog_post_tags').select('post_id, tag_id').in('post_id', postIds) : Promise.resolve({ data: [] as any[] }),
+        categoryIds.length ? supabase.from('blog_categories').select('id, name, slug').in('id', categoryIds) : Promise.resolve({ data: [] as any[] }),
+        authorIds.length ? supabase.from('blog_authors').select('id, name, bio, avatar_url').in('id', authorIds) : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const tagIds = [...new Set((tagLinks ?? []).map((link: any) => link.tag_id).filter(Boolean))];
+      const { data: tagRows } = tagIds.length
+        ? await supabase.from('blog_tags').select('id, name, slug').in('id', tagIds)
+        : { data: [] as any[] };
+      return posts.map((post: any) => ({
         ...post,
-        tags: (post.tags ?? []).map((item: any) => item.tag).filter(Boolean),
+        category: (categoryRows ?? []).find((row: any) => row.id === post.category_id) ?? null,
+        author: (authorRows ?? []).find((row: any) => row.id === post.author_id) ?? null,
+        tags: (tagLinks ?? []).filter((link: any) => link.post_id === post.id).map((link: any) => (tagRows ?? []).find((tag: any) => tag.id === link.tag_id)).filter(Boolean),
       }));
     },
   });
@@ -126,16 +141,16 @@ export function useBlogPost(id: string | null) {
 
       if (error) throw error;
 
-      // Fetch tags separately due to many-to-many relationship
-      const { data: tagData } = await supabase
-        .from('blog_post_tags')
-        .select('tag_id')
-        .eq('post_id', id);
-
-      return {
-        ...data,
-        tags: [],
-      };
+      const { data: links } = await supabase.from('blog_post_tags').select('tag_id').eq('post_id', id);
+      const tagIds = (links ?? []).map((link: any) => link.tag_id).filter(Boolean);
+      const { data: tags } = tagIds.length
+        ? await supabase.from('blog_tags').select('id, name, slug').in('id', tagIds)
+        : { data: [] as any[] };
+      const [{ data: category }, { data: author }] = await Promise.all([
+        data.category_id ? supabase.from('blog_categories').select('id, name, slug').eq('id', data.category_id).maybeSingle() : Promise.resolve({ data: null }),
+        data.author_id ? supabase.from('blog_authors').select('id, name, bio, avatar_url').eq('id', data.author_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      return { ...data, category: category ?? null, author: author ?? null, tags: tags ?? [] };
     },
     enabled: !!id,
   });
@@ -162,10 +177,16 @@ export function useBlogPostBySlug(slug: string | null) {
         .update({ view_count: data.view_count + 1 })
         .eq('id', data.id);
 
-      return {
-        ...data,
-        tags: [],
-      };
+      const { data: links } = await supabase.from('blog_post_tags').select('tag_id').eq('post_id', data.id);
+      const tagIds = (links ?? []).map((link: any) => link.tag_id).filter(Boolean);
+      const { data: tags } = tagIds.length
+        ? await supabase.from('blog_tags').select('id, name, slug').in('id', tagIds)
+        : { data: [] as any[] };
+      const [{ data: category }, { data: author }] = await Promise.all([
+        data.category_id ? supabase.from('blog_categories').select('id, name, slug').eq('id', data.category_id).maybeSingle() : Promise.resolve({ data: null }),
+        data.author_id ? supabase.from('blog_authors').select('id, name, bio, avatar_url').eq('id', data.author_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      return { ...data, category: category ?? null, author: author ?? null, tags: tags ?? [] };
     },
     enabled: !!slug,
   });
