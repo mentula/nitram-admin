@@ -149,7 +149,7 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
         .from('public')
         .upload(filePath, file, { contentType: file.type, cacheControl: '3600', upsert: false });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(uploadError.message);
 
       const { data: { publicUrl } } = supabase.storage
         .from('public')
@@ -158,8 +158,8 @@ export function BlogPostForm({ post, onSubmit, onCancel, isLoading }: BlogPostFo
       setValue('featured_image', publicUrl);
       toast.success('Image uploaded successfully');
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+      console.error('[v0] Featured blog image upload failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }

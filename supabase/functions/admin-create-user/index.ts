@@ -12,7 +12,13 @@ Deno.serve(async (req: Request) => {
     const { data: { user: caller }, error: callerError } = await admin.auth.getUser(token);
     if (callerError || !caller) throw new Error("Unauthorized");
     const { data: callerProfile } = await admin.from("profiles").select("role").eq("id", caller.id).maybeSingle();
-    if (callerProfile?.role !== "super_admin") throw new Error("Only super admins can create users");
+    const { count: profileCount, error: profileCountError } = await admin.from("profiles").select("id", { count: "exact", head: true });
+    if (profileCountError) throw profileCountError;
+    if (profileCount !== 0 && callerProfile?.role !== "super_admin") throw new Error("Only super admins can create users");
+    if (profileCount === 0) {
+      const { error: bootstrapError } = await admin.from("profiles").upsert({ id: caller.id, email: caller.email ?? "", full_name: caller.user_metadata?.full_name ?? caller.email ?? "Administrator", role: "super_admin", is_active: true }, { onConflict: "id" });
+      if (bootstrapError) throw bootstrapError;
+    }
     const body = await req.json();
     const email = String(body.email ?? "").trim().toLowerCase();
     const fullName = String(body.fullName ?? "").trim();
@@ -21,7 +27,7 @@ Deno.serve(async (req: Request) => {
     if (!email || !fullName || !["manager", "sales_agent", "logistics_officer", "content_manager"].includes(role)) throw new Error("Email, full name, and a valid role are required");
     const { data: authData, error: authError } = await admin.auth.admin.createUser({ email, email_confirm: true, user_metadata: { full_name: fullName } });
     if (authError || !authData.user) throw authError ?? new Error("Could not create user");
-    const { error: profileError } = await admin.from("profiles").update({ full_name: fullName, role, department, is_active: true }).eq("id", authData.user.id);
+    const { error: profileError } = await admin.from("profiles").upsert({ id: authData.user.id, email, full_name: fullName, role, department, is_active: true }, { onConflict: "id" });
     if (profileError) { await admin.auth.admin.deleteUser(authData.user.id); throw profileError; }
     return new Response(JSON.stringify({ user: { id: authData.user.id, email: authData.user.email } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
