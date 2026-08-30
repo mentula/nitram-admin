@@ -140,10 +140,45 @@ export const Route = createFileRoute("/api/send-assessment")({
 
         // ---- Build email HTML ----
         const stage = fields.stage === "completed" ? "Assessment Completed" : fields.stage === "started" ? "Assessment Started" : "Assessment";
-        const subject =
-          fields.stage === "completed"
-            ? `Assessment Completed — ${fields.fullName}${fields.service ? ` (${fields.service})` : ""}`
-            : `New Lead — ${fields.fullName}${fields.service ? ` (${fields.service})` : ""}`;
+        const subject = "Cargo Assessment Received";
+        const firstName = fields.fullName.split(/\s+/)[0] || fields.fullName;
+        const userMessage = fields.stage === "completed"
+          ? `Dear ${esc(firstName)},
+
+Thank you for submitting your cargo details.
+
+Our operations team is now reviewing your shipment.
+
+The next step is to appoint Nitram Logistics as your Customs Clearing Agent.
+
+Please complete the ZRA Agent Appointment Form on the next page.
+
+Need assistance?
+
+☎ +260 776833956
+
+Kind regards,
+
+Nitram Logistics`
+          : `Hello ${esc(firstName)},
+
+Thank you for contacting Nitram Logistics Limited.
+
+We’ve successfully received the first part of your quotation request.
+
+Our team is reviewing your information.
+
+To help us prepare an accurate quotation, please complete the Cargo Assessment on the next page.
+
+Once completed, one of our customs specialists will contact you.
+
+Need assistance?
+
+☎ +260 776 833 956
+
+Kind regards,
+
+Nitram Logistics`;
 
         const rows = TEXT_FIELDS
           .filter(([k]) => k !== "stage" && fields[k])
@@ -161,7 +196,8 @@ export const Route = createFileRoute("/api/send-assessment")({
               <h2 style="margin:6px 0 0;font-size:20px;">${esc(subject)}</h2>
             </div>
             <div style="padding:20px 24px;">
-              <table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:14px;">${rows}</table>
+              <div style="white-space:pre-line;color:#0f172a;font-size:15px;line-height:1.7;">${userMessage}</div>
+              <table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:14px;margin-top:20px;">${rows}</table>
               ${attachmentsBlock}
               <p style="margin-top:24px;color:#64748b;font-size:12px;">Sent automatically from the Nitram Logistics website.</p>
             </div>
@@ -169,7 +205,8 @@ export const Route = createFileRoute("/api/send-assessment")({
         </body></html>`;
 
         const text =
-          `${stage}\n\n` +
+          userMessage +
+          "\n\n--- Submission details ---\n" +
           TEXT_FIELDS.filter(([k]) => k !== "stage" && fields[k]).map(([k, label]) => `${label}: ${fields[k]}`).join("\n") +
           (attachmentSummary.length ? `\n\nAttachments:\n- ${attachmentSummary.join("\n- ")}` : "");
 
@@ -211,8 +248,9 @@ export const Route = createFileRoute("/api/send-assessment")({
           // Only include attachments if we have them; ensure they have valid base64 content
           const payload = {
             from,
-            to: [ASSESSMENT_EMAIL],
-            reply_to: fields.email,
+            to: [fields.email],
+            ...(ASSESSMENT_EMAIL && ASSESSMENT_EMAIL.toLowerCase() !== fields.email.toLowerCase() && { cc: [ASSESSMENT_EMAIL] }),
+            reply_to: ASSESSMENT_EMAIL,
             subject,
             html,
             text,
@@ -281,8 +319,9 @@ export const Route = createFileRoute("/api/send-assessment")({
             replyToEmail: fields.email,
             payloadKeys: Object.keys({
               from: FROM_EMAIL,
-              to: [ASSESSMENT_EMAIL],
-              reply_to: fields.email,
+              to: [fields.email],
+              cc: ASSESSMENT_EMAIL && ASSESSMENT_EMAIL.toLowerCase() !== fields.email.toLowerCase() ? [ASSESSMENT_EMAIL] : undefined,
+              reply_to: ASSESSMENT_EMAIL,
               subject,
               html: `HTML (${html.length} chars)`,
               text: `Text (${text.length} chars)`,
