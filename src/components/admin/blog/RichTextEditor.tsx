@@ -74,7 +74,8 @@ export function RichTextEditor({
       }),
       Image.configure({
         HTMLAttributes: {
-          class: 'rounded-lg max-w-full h-auto',
+          class: 'blog-editor-image',
+          loading: 'lazy',
         },
       }),
       Placeholder.configure({
@@ -88,7 +89,7 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[' + minHeight + '] p-4',
+        class: 'blog-editor-content focus:outline-none min-h-[' + minHeight + '] p-4',
       },
     },
   });
