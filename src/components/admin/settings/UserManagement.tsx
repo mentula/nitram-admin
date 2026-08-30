@@ -94,31 +94,18 @@ export function UserManagement() {
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (data: { email: string; fullName: string; role: UserRole; department?: string }) => {
-      // Call Supabase Auth Admin API to create user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        email_confirm: true,
-        user_metadata: {
-          full_name: data.fullName,
-        },
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+
+      const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+        body: data,
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (authError) throw authError;
-
-      // Update profile with role and department
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: data.fullName,
-          role: data.role,
-          department: data.department || null,
-          is_active: true,
-        })
-        .eq('id', authData.user.id);
-
-      if (profileError) throw profileError;
-
-      return authData.user;
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      return result.user;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });

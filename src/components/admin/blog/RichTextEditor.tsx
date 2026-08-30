@@ -74,7 +74,8 @@ export function RichTextEditor({
       }),
       Image.configure({
         HTMLAttributes: {
-          class: 'rounded-lg max-w-full h-auto',
+          class: 'blog-editor-image',
+          loading: 'lazy',
         },
       }),
       Placeholder.configure({
@@ -88,7 +89,7 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[' + minHeight + '] p-4',
+        class: 'blog-editor-content focus:outline-none min-h-[' + minHeight + '] p-4',
       },
     },
   });
@@ -154,7 +155,7 @@ export function RichTextEditor({
         .from('public')
         .upload(filePath, imageFile, { contentType: imageFile.type, cacheControl: '3600', upsert: false });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(uploadError.message);
 
       const { data: { publicUrl } } = supabase.storage
         .from('public')
@@ -170,8 +171,8 @@ export function RichTextEditor({
       setImageUrl('');
       setImageDialogOpen(false);
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+      console.error('[v0] Blog image upload failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setUploading(false);
     }

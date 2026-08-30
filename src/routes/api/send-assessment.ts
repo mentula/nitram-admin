@@ -216,8 +216,8 @@ Nitram Logistics`;
           console.log("📧 ASSESSMENT FORM SUBMISSION (EMAIL BYPASSED)");
           console.log("========================================");
           console.log("Subject:", subject);
-          console.log("To:", ASSESSMENT_EMAIL);
-          console.log("Reply-to:", fields.email);
+          console.log("Team notification:", ASSESSMENT_EMAIL);
+          console.log("Visitor confirmation:", fields.email);
           console.log("\nForm Data:");
           TEXT_FIELDS.filter(([k]) => k !== "stage" && fields[k]).forEach(([k, label]) => {
             console.log(`  ${label}: ${fields[k]}`);
@@ -235,26 +235,23 @@ Nitram Logistics`;
           });
         }
 
-        const sendViaResend = async (from: string) => {
-          // Validate email addresses - more strict validation
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!ASSESSMENT_EMAIL || !emailRegex.test(ASSESSMENT_EMAIL)) {
-            throw new Error(`Invalid recipient email address: ${ASSESSMENT_EMAIL}`);
-          }
-          if (!fields.email || !emailRegex.test(fields.email)) {
-            throw new Error(`Invalid reply-to email address: ${fields.email}`);
-          }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!ASSESSMENT_EMAIL || !emailRegex.test(ASSESSMENT_EMAIL)) {
+          return Response.json({ ok: false, error: "The team notification address is not configured." }, { status: 500 });
+        }
+        if (!emailRegex.test(fields.email)) {
+          return Response.json({ ok: false, error: "Please provide a valid email address." }, { status: 400 });
+        }
 
-          // Only include attachments if we have them; ensure they have valid base64 content
+        const sendViaResend = async (from: string, recipient: string, recipientSubject: string, recipientHtml: string, recipientText: string, includeAttachments: boolean) => {
           const payload = {
             from,
-            to: [fields.email],
-            ...(ASSESSMENT_EMAIL && ASSESSMENT_EMAIL.toLowerCase() !== fields.email.toLowerCase() && { cc: [ASSESSMENT_EMAIL] }),
-            reply_to: ASSESSMENT_EMAIL,
-            subject,
-            html,
-            text,
-            ...(attachments.length > 0 && {
+            to: [recipient],
+            ...(recipient === ASSESSMENT_EMAIL ? { reply_to: fields.email } : {}),
+            subject: recipientSubject,
+            html: recipientHtml,
+            text: recipientText,
+            ...(includeAttachments && attachments.length > 0 && {
               attachments: attachments.map((a) => ({
                 filename: a.filename,
                 content: a.content,
@@ -264,10 +261,10 @@ Nitram Logistics`;
           };
 
           console.log("[v0] Sending email via Resend:", { 
-            to: ASSESSMENT_EMAIL, 
-            from, 
-            hasAttachments: attachments.length > 0,
-            textLength: text.length
+            to: recipient,
+            from,
+            hasAttachments: includeAttachments && attachments.length > 0,
+            textLength: recipientText.length
           });
 
           const response = await fetch("https://api.resend.com/emails", {
@@ -282,23 +279,28 @@ Nitram Logistics`;
           return response;
         };
 
+        const confirmationSubject = `We received your ${stage.toLowerCase()} request`;
+        const confirmationHtml = `<!doctype html><html><body style="margin:0;padding:24px;background:#f1f5f9;font-family:Arial,sans-serif;"><div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;padding:28px;border:1px solid #e5e7eb;"><h2 style="color:#0b1f3a;">Thank you, ${esc(fields.fullName)}</h2><p>We received your request and a Nitram Logistics representative will contact you shortly.</p><p style="color:#64748b;font-size:13px;">Service: ${esc(fields.service || "General enquiry")}</p></div></body></html>`;
+        const confirmationText = `Thank you, ${fields.fullName}. We received your request and a Nitram Logistics representative will contact you shortly.`;
+
+        const sendWithFallback = async (recipient: string, recipientSubject: string, recipientHtml: string, recipientText: string, includeAttachments: boolean) => {
+          let response = await sendViaResend(FROM_EMAIL, recipient, recipientSubject, recipientHtml, recipientText, includeAttachments);
+          if (!response.ok && FROM_EMAIL !== SAFE_FROM) {
+            const detail = await response.clone().text().catch(() => "");
+            if (/not verified|domain/i.test(detail)) response = await sendViaResend(SAFE_FROM, recipient, recipientSubject, recipientHtml, recipientText, includeAttachments);
+          }
+          return response;
+        };
+
         let resendRes;
         try {
-          resendRes = await sendViaResend(FROM_EMAIL);
-        } catch (err) {
-          return Response.json(
-            { ok: false, error: `Email validation failed: ${err instanceof Error ? err.message : "Unknown error"}` },
-            { status: 400 }
-          );
-        }
-
-        // Auto-fallback: if the configured domain isn't verified in Resend,
-        // retry once with Resend's shared onboarding sender so the lead still lands.
-        if (!resendRes.ok && FROM_EMAIL !== SAFE_FROM) {
-          const detail = await resendRes.clone().text().catch(() => "");
-          if (/not verified|domain/i.test(detail)) {
-            resendRes = await sendViaResend(SAFE_FROM);
+          resendRes = await sendWithFallback(ASSESSMENT_EMAIL, subject, html, text, true);
+          if (resendRes.ok && fields.email.toLowerCase() !== ASSESSMENT_EMAIL.toLowerCase()) {
+            const confirmationRes = await sendWithFallback(fields.email, confirmationSubject, confirmationHtml, confirmationText, false);
+            if (!confirmationRes.ok) console.error("[v0] Lead confirmation email failed", { status: confirmationRes.status, recipient: fields.email });
           }
+        } catch (err) {
+          return Response.json({ ok: false, error: `Email validation failed: ${err instanceof Error ? err.message : "Unknown error"}` }, { status: 400 });
         }
 
         if (!resendRes.ok) {
