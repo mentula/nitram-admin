@@ -144,8 +144,8 @@ function BlogPostPage() {
             )}
 
             {/* Content */}
-            <div
-              className="prose prose-lg max-w-none [&_img]:my-8 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xl [&_img]:object-contain"
+            <article
+              className="blog-article-content"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
 
