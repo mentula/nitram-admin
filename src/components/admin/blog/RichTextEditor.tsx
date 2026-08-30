@@ -155,7 +155,7 @@ export function RichTextEditor({
         .from('public')
         .upload(filePath, imageFile, { contentType: imageFile.type, cacheControl: '3600', upsert: false });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(uploadError.message);
 
       const { data: { publicUrl } } = supabase.storage
         .from('public')
@@ -171,8 +171,8 @@ export function RichTextEditor({
       setImageUrl('');
       setImageDialogOpen(false);
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+      console.error('[v0] Blog image upload failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setUploading(false);
     }
